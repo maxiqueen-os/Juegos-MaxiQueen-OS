@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen OS - Cyber Hunter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+        body {
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(circle at 50% 50%, #1a1a24 0%, #050505 100%);
+            user-select: none;
+        }
+
+        .glass-panel {
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(250, 204, 21, 0.2);
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Cursor de francotirador personalizado */
+        canvas {
+            background-color: #0a0a0f;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: crosshair;
+            box-shadow: inset 0 0 50px rgba(0,0,0,1);
+        }
+
+        .mq-gold { color: #facc15; }
+        .mq-gold-bg { background-color: #facc15; color: black; }
+        
+        .btn-game {
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .btn-game:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+        }
+
+        /* Barra de Tiempo */
+        .time-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #111;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .time-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6);
+            width: 100%;
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+        .time-bar-warning {
+            background: linear-gradient(90deg, #facc15, #ef4444);
+            animation: pulse-danger 0.5s infinite alternate;
+        }
+
+        @keyframes pulse-danger {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
+        }
+
+        /* Pantallas superpuestas */
+        .overlay-screen {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 50;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row gap-6 p-4">
+
+    <!-- Panel Lateral -->
+    <div class="w-full md:w-72 glass-panel rounded-2xl p-6 flex flex-col h-full max-h-[600px]">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-black italic mq-gold mb-1">MQ<span class="text-white">_HUNTER</span></h1>
+            <p class="text-[9px] text-zinc-500 uppercase tracking-widest">Data Interceptor</p>
+        </div>
+
+        <div class="space-y-4 mb-6 flex-1">
+            <!-- Nivel -->
+            <div class="bg-black/50 p-3 rounded-xl border border-white/5 text-center">
+                <p class="text-[10px] text-zinc-500 uppercase">NIVEL DE ENCRIPTACIÓN</p>
+                <p class="text-3xl font-black text-white">LVL <span id="ui-level">1</span></p>
+            </div>
+
+            <!-- Puntos -->
+            <div class="bg-black/50 p-4 rounded-xl border border-white/5 text-center relative overflow-hidden">
+                <div class="absolute inset-0 bg-yellow-400/5 blur-xl"></div>
+                <p class="text-[10px] text-yellow-400/70 uppercase font-bold">NODOS INTERCEPTADOS</p>
+                <p class="text-4xl font-black mq-gold mt-1"><span id="ui-score">0</span></p>
+                <p class="text-xs text-zinc-500 mt-1">Meta: <span id="ui-target-score">1000</span></p>
+            </div>
+            
+            <!-- Tiempo -->
+            <div class="bg-black/50 p-3 rounded-xl border border-white/5">
+                <div class="flex justify-between items-end mb-2">
+                    <p class="text-[10px] text-zinc-500 uppercase">TIEMPO DE CONEXIÓN</p>
+                    <p class="text-lg font-bold text-cyan-400"><span id="ui-time">30.0</span>s</p>
+                </div>
+                <div class="time-bar-container">
+                    <div id="time-fill" class="time-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Precisión -->
+            <div class="text-center mt-4">
+                <p class="text-[10px] text-zinc-600 uppercase">Precisión del Operador</p>
+                <p class="text-sm text-zinc-400"><span id="ui-accuracy">100</span>%</p>
+            </div>
+        </div>
+
+        <button id="btn-start" class="btn-game w-full py-4 mq-gold-bg rounded-xl mt-auto text-sm shadow-[0_0_20px_rgba(250,204,21,0.3)]" onclick="startGame()">
+            <i class="fas fa-crosshairs mr-2"></i> INICIAR ESCANEO
+        </button>
+    </div>
+
+    <!-- Área de Juego (Canvas) -->
+    <div class="relative">
+        <canvas id="gameCanvas" width="700" height="600"></canvas>
+        
+        <!-- Pantallas -->
+        <div id="level-up-screen" class="overlay-screen">
+            <i class="fas fa-unlock-alt text-6xl text-cyan-400 mb-4"></i>
+            <h2 class="text-4xl font-black text-white mb-2">NIVEL SUPERADO</h2>
+            <p class="text-zinc-400 mb-6">Encriptación vulnerada. Prepárate para el siguiente nivel.</p>
+            <button onclick="nextLevel()" class="btn-game px-8 py-3 bg-cyan-500 text-black rounded-xl">Continuar <i class="fas fa-arrow-right ml-2"></i></button>
+        </div>
+
+        <div id="game-over-screen" class="overlay-screen">
+            <i class="fas fa-ban text-6xl text-red-500 mb-4"></i>
+            <h2 class="text-4xl font-black text-white mb-2">TIEMPO AGOTADO</h2>
+            <p class="text-zinc-400 mb-6">El sistema cerró la conexión. Puntuación final: <span id="final-score" class="mq-gold">0</span></p>
+            <button onclick="location.reload()" class="btn-game px-8 py-3 bg-red-600 text-white rounded-xl">Reiniciar Secuencia</button>
+        </div>
+
+        <div id="victory-screen" class="overlay-screen">
+            <i class="fas fa-trophy text-6xl text-yellow-400 mb-4"></i>
+            <h2 class="text-4xl font-black text-white mb-2">ACCESO MAESTRO</h2>
+            <p class="text-zinc-400 mb-6">Has hackeado todo el ecosistema. Precisión: <span id="final-acc" class="text-cyan-400">100%</span></p>
+            <button onclick="location.reload()" class="btn-game px-8 py-3 mq-gold-bg rounded-xl">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- ESTADO DEL JUEGO ---
+        let state = {
+            isPlaying: false,
+            level: 1,
+            maxLevels: 10,
+            score: 0,
+            targetScore: 1000,
+            timeTotal: 30,
+            timeLeft: 30,
+            clicks: 0,
+            hits: 0,
+            
+            // Dificultad base (escala por nivel)
+            spawnRate: 1000, // ms
+            targetDuration: 2000, // ms
+            minRadius: 20,
+            maxRadius: 40
+        };
+
+        let targets = [];
+        let particles = [];
+        let trails = []; // Rastro del mouse
+        let lastTime = 0;
+        let spawnTimer = 0;
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        let animationId;
+
+        // --- CLASES ---
+        class Target {
+            constructor() {
+                this.radius = Math.random() * (state.maxRadius - state.minRadius) + state.minRadius;
+                // Asegurar que no se salgan del canvas
+                this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                this.y = Math.random() * (canvas.height - this.radius * 2) + this.radius;
+                
+                this.maxLife = state.targetDuration;
+                this.life = this.maxLife;
+                
+                this.points = Math.floor(100 * (50 / this.radius)); // Más pequeño = Más puntos
+                
+                // Efecto de aparición (Scale in)
+                this.scale = 0;
+                
+                // Colores cyberpunk aleatorios
+                const colors = ['#facc15', '#06b6d4', '#ec4899', '#39ff14'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                
+                // ¿Es un objetivo especial "Glitch"? (Puntos x3, dura menos)
+                this.isGlitch = Math.random() < 0.1;
+                if(this.isGlitch) {
+                    this.color = '#fff';
+                    this.points *= 3;
+                    this.life *= 0.6;
+                    this.maxLife *= 0.6;
+                }
+            }
+
+            update(deltaTime) {
+                this.life -= deltaTime;
+                if (this.scale < 1) this.scale += deltaTime / 200;
+                if (this.scale > 1) this.scale = 1;
+            }
+
+            draw() {
+                const alpha = this.life / this.maxLife;
+                const currentRadius = this.radius * this.scale;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Efecto Glitch visual
+                if(this.isGlitch && Math.random() < 0.2) {
+                    ctx.translate((Math.random()-0.5)*5, (Math.random()-0.5)*5);
+                }
+
+                // Brillo exterior
+                ctx.beginPath();
+                ctx.arc(0, 0, currentRadius + 5, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = alpha * 0.3;
+                ctx.fill();
+
+                // Núcleo
+                ctx.beginPath();
+                ctx.arc(0, 0, currentRadius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = alpha;
+                ctx.fill();
+
+                // Aro interior
+                ctx.beginPath();
+                ctx.arc(0, 0, currentRadius * 0.5, 0, Math.PI * 2);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 3 + 1;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.life = 1;
+                this.decay = Math.random() * 0.05 + 0.02;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // --- SISTEMA DEL JUEGO ---
+        function startGame() {
+            document.getElementById('btn-start').disabled = true;
+            document.getElementById('btn-start').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> ESCANEANDO...';
+            
+            state.score = 0;
+            state.hits = 0;
+            state.clicks = 0;
+            setupLevel();
+            
+            state.isPlaying = true;
+            targets = [];
+            particles = [];
+            lastTime = performance.now();
+            
+            cancelAnimationFrame(animationId);
+            gameLoop(lastTime);
+        }
+
+        function setupLevel() {
+            // Escalar dificultad
+            state.targetScore = state.level * 1000 + (state.level * 500);
+            state.timeTotal = Math.max(15, 35 - (state.level * 2)); // Menos tiempo cada nivel
+            state.timeLeft = state.timeTotal;
+            
+            state.spawnRate = Math.max(300, 1000 - (state.level * 80)); // Aparecen más rápido
+            state.targetDuration = Math.max(800, 2000 - (state.level * 120)); // Duran menos
+            
+            state.maxRadius = Math.max(20, 45 - state.level); // Se hacen más pequeños
+            
+            updateUI();
+        }
+
+        function nextLevel() {
+            document.getElementById('level-up-screen').style.display = 'none';
+            state.level++;
+            setupLevel();
+            state.isPlaying = true;
+            targets = [];
+            particles = [];
+            lastTime = performance.now();
+            gameLoop(lastTime);
+        }
+
+        function endGame(victory) {
+            state.isPlaying = false;
+            cancelAnimationFrame(animationId);
+            
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-start').innerHTML = '<i class="fas fa-crosshairs mr-2"></i> REINICIAR SISTEMA';
+            
+            if (victory) {
+                document.getElementById('victory-screen').style.display = 'flex';
+                document.getElementById('final-acc').innerText = `${getAccuracy()}%`;
+            } else {
+                document.getElementById('game-over-screen').style.display = 'flex';
+                document.getElementById('final-score').innerText = state.score;
+            }
+        }
+
+        // --- INTERACCIÓN ---
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            
+            // Añadir al rastro
+            trails.push({x: mouseX, y: mouseY, life: 1});
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!state.isPlaying) return;
+            
+            state.clicks++;
+            let hitTarget = false;
+
+            // Revisar colisión de arriba hacia abajo (para darle al que está encima)
+            for (let i = targets.length - 1; i >= 0; i--) {
+                const t = targets[i];
+                const dist = Math.hypot(mouseX - t.x, mouseY - t.y);
+                
+                if (dist <= t.radius * t.scale) {
+                    // ¡ACIERTO!
+                    hitTarget = true;
+                    state.hits++;
+                    state.score += t.points;
+                    
+                    // Efectos
+                    for(let j=0; j<15; j++) particles.push(new Particle(t.x, t.y, t.color));
+                    
+                    // Texto flotante de puntos
+                    createFloatingText(t.x, t.y, `+${t.points}`, t.color);
+
+                    targets.splice(i, 1);
+                    updateUI();
+                    
+                    // Verificar si ya cumplió la meta
+                    if (state.score >= state.targetScore) {
+                        state.isPlaying = false;
+                        if (state.level >= state.maxLevels) {
+                            endGame(true); // Victoria Total
+                        } else {
+                            document.getElementById('level-up-screen').style.display = 'flex';
+                        }
+                    }
+                    break; 
+                }
+            }
+
+            if (!hitTarget) {
+                // Efecto visual de fallo
+                for(let j=0; j<5; j++) particles.push(new Particle(mouseX, mouseY, '#333'));
+            }
+            updateUI();
+        });
+
+        function createFloatingText(x, y, text, color) {
+            const el = document.createElement('div');
+            el.innerText = text;
+            el.style.position = 'absolute';
+            el.style.left = (x + canvas.offsetLeft) + 'px';
+            el.style.top = (y + canvas.offsetTop) + 'px';
+            el.style.color = color;
+            el.style.fontWeight = 'bold';
+            el.style.pointerEvents = 'none';
+            el.style.zIndex = '100';
+            el.style.animation = 'floatUp 1s ease-out forwards';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function getAccuracy() {
+            if (state.clicks === 0) return 100;
+            return Math.floor((state.hits / state.clicks) * 100);
+        }
+
+        function updateUI() {
+            document.getElementById('ui-level').innerText = state.level;
+            document.getElementById('ui-score').innerText = state.score;
+            document.getElementById('ui-target-score').innerText = state.targetScore;
+            document.getElementById('ui-time').innerText = state.timeLeft.toFixed(1);
+            document.getElementById('ui-accuracy').innerText = getAccuracy();
+
+            // Barra de tiempo
+            const timePct = (state.timeLeft / state.timeTotal) * 100;
+            const fillEl = document.getElementById('time-fill');
+            fillEl.style.width = `${timePct}%`;
+            
+            if (timePct < 25) fillEl.classList.add('time-bar-warning');
+            else fillEl.classList.remove('time-bar-warning');
+        }
+
+        // --- BUCLE DE JUEGO ---
+        function gameLoop(currentTime) {
+            if (!state.isPlaying) return;
+
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // Actualizar tiempo
+            state.timeLeft -= deltaTime / 1000;
+            if (state.timeLeft <= 0) {
+                state.timeLeft = 0;
+                updateUI();
+                endGame(false); // Pierde por tiempo
+                return;
+            }
+
+            // Spawnear Objetivos
+            spawnTimer += deltaTime;
+            if (spawnTimer >= state.spawnRate) {
+                targets.push(new Target());
+                spawnTimer = 0;
+            }
+
+            // Actualizar entidades
+            targets.forEach(t => t.update(deltaTime));
+            particles.forEach(p => p.update());
+            
+            // Rastro del mouse
+            trails.forEach(tr => tr.life -= 0.05);
+            trails = trails.filter(tr => tr.life > 0);
+
+            // Eliminar objetivos muertos por tiempo
+            targets = targets.filter(t => t.life > 0);
+            particles = particles.filter(p => p.life > 0);
+
+            // RENDERIZADO
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar rejilla de fondo
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+            // Dibujar rastro
+            if (trails.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(trails[0].x, trails[0].y);
+                for(let i=1; i<trails.length; i++) {
+                    ctx.lineTo(trails[i].x, trails[i].y);
+                }
+                ctx.strokeStyle = 'rgba(6, 182, 212, 0.3)'; // Cyan
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
+
+            targets.forEach(t => t.draw());
+            particles.forEach(p => p.draw());
+
+            // Mira del francotirador en el cursor
+            ctx.strokeStyle = '#facc15'; // Dorado
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(mouseX - 15, mouseY); ctx.lineTo(mouseX + 15, mouseY);
+            ctx.moveTo(mouseX, mouseY - 15); ctx.lineTo(mouseX, mouseY + 15);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 8, 0, Math.PI*2);
+            ctx.stroke();
+
+            // Actualizar UI 10 veces por segundo
+            if (Math.floor(currentTime) % 5 === 0) updateUI();
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Inicializar UI visual
+        updateUI();
+    </script>
+</body>
+</html>

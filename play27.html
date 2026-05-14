@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS • MULTIVERSE RUNNER PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue: #0066ff; --yellow: #ffcc00; --red: #ff0033; --bg: #010409;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg); 
+            color: white; 
+            font-family: 'Orbitron', sans-serif; 
+            overflow: hidden;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* HEADER HUD */
+        #hud {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            padding: 10px 20px; border-bottom: 2px solid var(--blue);
+            background: rgba(0, 0, 0, 0.9); z-index: 100;
+        }
+        .stat { text-align: center; font-size: 0.8rem; letter-spacing: 1px; }
+        .stat span { display: block; font-size: 1.2rem; font-weight: 900; color: var(--yellow); }
+        .hp-val { color: var(--red) !important; }
+
+        /* GAME AREA */
+        #game-wrapper {
+            flex-grow: 1; position: relative; background: #000; overflow: hidden;
+        }
+        canvas { display: block; }
+
+        /* MOBILE CONTROLS */
+        #mobile-controls {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px; background: #000; height: 160px;
+        }
+        .joy-group { display: flex; gap: 15px; }
+        .btn-ctrl {
+            width: 70px; height: 70px; background: rgba(0, 102, 255, 0.2);
+            border: 2px solid var(--blue); border-radius: 15px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: white; transition: 0.1s;
+        }
+        .btn-jump { 
+            width: 90px; height: 90px; border-radius: 50%; 
+            background: rgba(255, 204, 0, 0.2); border-color: var(--yellow);
+            color: var(--yellow); font-weight: 900;
+        }
+        .btn-ctrl:active { transform: scale(0.9); background: var(--blue); }
+        .btn-jump:active { background: var(--yellow); color: black; }
+
+        /* OVERLAYS */
+        #msg-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; pointer-events: none; z-index: 50;
+        }
+        .level-up { 
+            font-size: 2rem; color: var(--yellow); text-shadow: 0 0 20px var(--yellow);
+            animation: pulse 1s infinite; display: none;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <div class="stat">SECTOR <span>0<b id="lvl-ui">1</b></span></div>
+    <div class="stat">CRÉDITOS <span><b id="coin-ui">0</b></span></div>
+    <div class="stat">ESTADO <span class="hp-val"><b id="hp-ui">100</b>%</span></div>
+</div>
+
+<div id="game-wrapper">
+    <div id="msg-overlay">
+        <div id="level-msg" class="level-up">SECTOR ASEGURADO</div>
+    </div>
+    <canvas id="canvas"></canvas>
+</div>
+
+<div id="mobile-controls">
+    <div class="joy-group">
+        <div class="btn-ctrl" id="leftBtn">◀</div>
+        <div class="btn-ctrl" id="rightBtn">▶</div>
+    </div>
+    <div class="btn-ctrl btn-jump" id="jumpBtn">UP</div>
+</div>
+
+<script>
+/**
+ * MAXIQUEEN GAME ENGINE PRO
+ * Arquitectura: Entidad-Componente / Scroll de Cámara / Colisión Avanzada
+ */
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const lvlUI = document.getElementById('lvl-ui');
+const coinUI = document.getElementById('coin-ui');
+const hpUI = document.getElementById('hp-ui');
+const levelMsg = document.getElementById('level-msg');
+
+// CONFIGURACIÓN GLOBAL
+const TILE_SIZE = 50;
+const GRAVITY = 0.6;
+const FRICTION = 0.8;
+
+let width, height;
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = document.getElementById('game-wrapper').clientHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ESTADO DEL JUEGO
+const Game = {
+    lvl: 1,
+    coins: 0,
+    hp: 100,
+    cameraX: 0,
+    entities: [],
+    platforms: [],
+    items: [],
+    enemies: [],
+    portal: null
+};
+
+// JUGADOR
+const Player = {
+    x: 100, y: 0,
+    vx: 0, vy: 0,
+    w: 35, h: 50,
+    speed: 5,
+    jumpForce: -14,
+    grounded: false,
+    color: '#0066ff',
+    
+    update() {
+        // Controles
+        if (keys.ArrowLeft || keys.left) this.vx = -this.speed;
+        else if (keys.ArrowRight || keys.right) this.vx = this.speed;
+        else this.vx *= FRICTION;
+
+        if ((keys.ArrowUp || keys.Space || keys.jump) && this.grounded) {
+            this.vy = this.jumpForce;
+            this.grounded = false;
+        }
+
+        // Física
+        this.vy += GRAVITY;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        this.grounded = false;
+        this.checkCollisions();
+        
+        // Cámara (Sigue al jugador)
+        let targetCam = this.x - width / 3;
+        Game.cameraX += (targetCam - Game.cameraX) * 0.1;
+        if(Game.cameraX < 0) Game.cameraX = 0;
+
+        // Muerte por caída
+        if (this.y > height + 500) this.die();
+    },
+
+    checkCollisions() {
+        // Suelos y Paredes
+        Game.platforms.forEach(p => {
+            if (this.x < p.x + p.w && this.x + this.w > p.x &&
+                this.y < p.y + p.h && this.y + this.h > p.y) {
+                
+                // Colisión desde arriba
+                if (this.vy > 0 && this.y + this.h - this.vy <= p.y) {
+                    this.y = p.y - this.h;
+                    this.vy = 0;
+                    this.grounded = true;
+                }
+                // Colisión lateral
+                else if (this.vx > 0 && this.x + this.w - this.vx <= p.x) this.x = p.x - this.w;
+                else if (this.vx < 0 && this.x - this.vx >= p.x + p.w) this.x = p.x + p.w;
+                // Colisión desde abajo
+                else if (this.vy < 0) { this.y = p.y + p.h; this.vy = 0; }
+            }
+        });
+
+        // Items
+        Game.items.forEach((item, i) => {
+            if (!item.collected && this.x < item.x + item.w && this.x + this.w > item.x &&
+                this.y < item.y + item.h && this.y + this.h > item.y) {
+                item.collected = true;
+                Game.coins += 10;
+                coinUI.innerText = Game.coins;
+            }
+        });
+
+        // Portal de Nivel
+        if (Game.portal && this.x < Game.portal.x + Game.portal.w && this.x + this.w > Game.portal.x) {
+            this.nextLevel();
+        }
+    },
+
+    die() {
+        Game.hp = 0;
+        hpUI.innerText = 0;
+        setTimeout(() => location.reload(), 500);
+    },
+
+    nextLevel() {
+        levelMsg.style.display = 'block';
+        setTimeout(() => {
+            levelMsg.style.display = 'none';
+            Game.lvl++;
+            lvlUI.innerText = Game.lvl;
+            initLevel();
+        }, 1500);
+    },
+
+    draw() {
+        ctx.save();
+        ctx.translate(-Game.cameraX, 0);
+        
+        // Cuerpo
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 15; ctx.shadowColor = this.color;
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        
+        // Visor
+        ctx.fillStyle = 'white';
+        ctx.fillRect(this.x + 10, this.y + 10, 20, 8);
+        
+        ctx.restore();
+    }
+};
+
+// MOTOR DE NIVELES
+const MapGenerators = {
+    get(lvl) {
+        // Generación procedimental simple: niveles más largos según el nivel
+        let map = [
+            "                        ",
+            "   CC   CC    CC        ",
+            "  111  111   111    P   ",
+            "                        ",
+            "111111111111111111111111"
+        ];
+        
+        // En niveles superiores, inyectamos más peligro
+        if(lvl > 1) {
+            map[4] = "111133111133111133111111111111111111111";
+            map[1] = "      CC       CC       CC         CC  ";
+        }
+        return map;
+    }
+};
+
+function initLevel() {
+    Game.platforms = [];
+    Game.items = [];
+    Game.enemies = [];
+    Player.x = 100; Player.y = 0; Player.vx = 0; Player.vy = 0;
+    
+    const map = MapGenerators.get(Game.lvl);
+    const mapWidth = map[0].length;
+    
+    for (let r = 0; r < map.length; r++) {
+        for (let c = 0; c < map[r].length; c++) {
+            let char = map[r][c];
+            let px = c * TILE_SIZE;
+            let py = height - (map.length - r) * TILE_SIZE;
+
+            if (char === '1') Game.platforms.push({ x: px, y: py, w: TILE_SIZE, h: TILE_SIZE, type: 'block' });
+            if (char === '3') Game.platforms.push({ x: px, y: py + 20, w: TILE_SIZE, h: 30, type: 'spike' });
+            if (char === 'C') Game.items.push({ x: px + 15, y: py + 15, w: 20, h: 20, collected: false });
+            if (char === 'P') Game.portal = { x: px, y: py - 100, w: 60, h: 200 };
+        }
+    }
+}
+
+// INPUTS
+const keys = { left: false, right: false, jump: false };
+window.onkeydown = e => keys[e.code] = true;
+window.onkeyup = e => keys[e.code] = false;
+
+// Touch Events
+const bindTouch = (id, key) => {
+    const el = document.getElementById(id);
+    el.ontouchstart = e => { e.preventDefault(); keys[key] = true; };
+    el.ontouchend = e => { e.preventDefault(); keys[key] = false; };
+};
+bindTouch('leftBtn', 'left');
+bindTouch('rightBtn', 'right');
+bindTouch('jumpBtn', 'jump');
+
+// BUCLE PRINCIPAL
+function loop() {
+    ctx.clearRect(0, 0, width, height);
+
+    // Fondo Parallax (Estrellas)
+    ctx.fillStyle = '#111';
+    for(let i=0; i<50; i++) {
+        let sx = (i * 150 - Game.cameraX * 0.2) % width;
+        ctx.fillRect(sx, i * 20, 2, 2);
+    }
+
+    // Dibujar Mundo
+    ctx.save();
+    ctx.translate(-Game.cameraX, 0);
+
+    // Plataformas
+    Game.platforms.forEach(p => {
+        ctx.fillStyle = p.type === 'block' ? '#003366' : '#ff0033';
+        ctx.shadowBlur = 0;
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        
+        // Bordes Neon
+        ctx.strokeStyle = p.type === 'block' ? varName('--blue') : varName('--red');
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x, p.y, p.w, p.h);
+    });
+
+    // Items (Monedas)
+    Game.items.forEach(item => {
+        if(!item.collected) {
+            ctx.fillStyle = varName('--yellow');
+            ctx.shadowBlur = 10; ctx.shadowColor = varName('--yellow');
+            ctx.beginPath();
+            ctx.arc(item.x + 10, item.y + 10, 8, 0, Math.PI*2);
+            ctx.fill();
+        }
+    });
+
+    // Portal
+    if(Game.portal) {
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+        ctx.fillRect(Game.portal.x, Game.portal.y, Game.portal.w, Game.portal.h);
+        ctx.strokeStyle = 'cyan';
+        ctx.strokeRect(Game.portal.x, Game.portal.y, Game.portal.w, Game.portal.h);
+    }
+
+    ctx.restore();
+
+    Player.update();
+    Player.draw();
+
+    requestAnimationFrame(loop);
+}
+
+function varName(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// INICIO
+initLevel();
+loop();
+</script>
+</body>
+</html>

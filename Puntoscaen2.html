@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen OS: Neural Dash Elite</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { 
+            --neon: #00ffcc; 
+            --danger: #ff2a6d; 
+            --bg: #050505;
+            --gold: #ffcc00;
+            --shield: #3498db;
+        }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        
+        #game-container { 
+            position: relative; width: 420px; height: 700px; 
+            background: #000; border: 2px solid var(--neon); 
+            border-radius: 10px; overflow: hidden; 
+            box-shadow: 0 0 40px rgba(0, 255, 204, 0.1);
+        }
+
+        /* Efecto de Escaneo Retro */
+        #game-container::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 20; pointer-events: none; background-size: 100% 3px, 3px 100%;
+        }
+
+        #player { 
+            position: absolute; bottom: 40px; width: 80px; height: 10px; 
+            background: var(--neon); box-shadow: 0 0 20px var(--neon); 
+            border-radius: 4px; z-index: 10; transition: transform 0.05s ease-out;
+        }
+
+        .item { position: absolute; font-weight: 900; z-index: 5; transition: color 0.3s; }
+        
+        #ui-bar { 
+            position: absolute; top: 0; width: 100%; padding: 20px; 
+            background: rgba(0,0,0,0.8); display: flex; justify-content: space-between; 
+            box-sizing: border-box; border-bottom: 1px solid var(--neon); z-index: 30;
+        }
+
+        .label { font-size: 10px; color: var(--neon); display: block; margin-bottom: 2px; }
+        .value { font-size: 18px; font-weight: bold; }
+
+        #overlay { 
+            position: absolute; inset: 0; background: rgba(0,0,0,0.95); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 100; text-align: center;
+        }
+
+        .shield-active { border: 3px solid var(--shield) !important; box-shadow: 0 0 20px var(--shield) !important; }
+        
+        input { background: #111; border: 1px solid var(--neon); color: var(--neon); padding: 12px; margin: 10px 0; width: 80%; text-align: center; font-family: inherit; }
+        button { background: var(--neon); border: none; padding: 12px 30px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        
+        /* Animaciones */
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+        .shake { animation: glitch 0.2s linear; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui-bar">
+        <div><span class="label">COGNITIVE_SCORE</span><span class="value" id="score">0</span></div>
+        <div style="text-align: center;"><span class="label">SYSTEM_LVL</span><span class="value" id="lvl">1</span></div>
+        <div style="text-align: right;"><span class="label">INTEGRITY</span><span id="lives" class="value">❤️❤️❤️</span></div>
+    </div>
+    
+    <div id="player"></div>
+
+    <div id="overlay">
+        <h1 id="end-title" style="color: var(--danger); font-size: 40px; margin: 0;">LINK_BROKEN</h1>
+        <p id="final-stats">PROCESO FINALIZADO</p>
+        <hr style="width: 80%; border: 0; border-top: 1px solid #333;">
+        <input type="text" id="username" placeholder="ID_AGENTE" maxlength="12">
+        <button onclick="saveScore()">SINCRONIZAR NÚCLEO</button>
+        <div id="leaderboard" style="margin-top: 20px; width: 85%; font-size: 12px;"></div>
+        <button style="background: transparent; border: 1px solid white; color: white; margin-top: 10px;" onclick="location.reload()">REINICIAR INTERFAZ</button>
+    </div>
+</div>
+
+<script>
+    // CREDENCIALES CONFIGURADAS
+    const firebaseConfig = {
+      apiKey: "AIzaSyDdwqmNnw8d5oKeEM1SmpYh0SJOO79OoMU",
+      authDomain: "maxiqueen-os-3982f.firebaseapp.com",
+      projectId: "maxiqueen-os-3982f",
+      storageBucket: "maxiqueen-os-3982f.appspot.com",
+      messagingSenderId: "39693674275",
+      appId: "1:39693674275:web:6d983fabd77440b5090e96",
+      databaseURL: "https://maxiqueen-os-3982f-default-rtdb.firebaseio.com/"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let score = 0, lives = 3, level = 1, hasShield = false, active = true;
+    const player = document.getElementById('player');
+    const container = document.getElementById('game-container');
+
+    // Control adaptable (Touch/Mouse)
+    const handleInput = (e) => {
+        if(!active) return;
+        const rect = container.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let x = clientX - rect.left - (player.offsetWidth / 2);
+        player.style.left = Math.max(0, Math.min(x, container.offsetWidth - player.offsetWidth)) + 'px';
+    };
+    container.addEventListener('mousemove', handleInput);
+    container.addEventListener('touchmove', handleInput);
+
+    function spawn() {
+        if(!active) return;
+        
+        const item = document.createElement('div');
+        const rand = Math.random();
+        
+        // Probabilidades de ítems
+        let type = 'data'; 
+        if(rand > 0.90) type = 'virus';      // 10% virus
+        else if(rand > 0.85) type = 'shield'; // 5% escudo
+        else if(rand > 0.80) type = 'bonus';  // 5% bonus
+
+        item.className = 'item';
+        if(type === 'virus') {
+            item.innerText = '×';
+            item.style.color = 'var(--danger)';
+        } else if(type === 'shield') {
+            item.innerText = '[#]';
+            item.style.color = 'var(--shield)';
+        } else if(type === 'bonus') {
+            item.innerText = '★';
+            item.style.color = 'var(--gold)';
+        } else {
+            item.innerText = Math.random() > 0.5 ? '1' : '0';
+            item.style.color = 'var(--neon)';
+        }
+
+        item.style.left = Math.random() * (container.offsetWidth - 30) + 'px';
+        item.style.top = '-40px';
+        item.style.fontSize = '24px';
+        container.appendChild(item);
+
+        // Física del juego
+        let speed = 5 + (level * 1.5);
+        let drift = (level > 2) ? (Math.sin(Date.now()/500) * level) : 0; // Movimiento cognitivo lateral
+
+        let fall = setInterval(() => {
+            if(!active) { item.remove(); clearInterval(fall); return; }
+            
+            let top = parseFloat(item.style.top) + speed;
+            let left = parseFloat(item.style.left) + drift;
+            
+            item.style.top = top + 'px';
+            item.style.left = left + 'px';
+
+            const pRect = player.getBoundingClientRect();
+            const iRect = item.getBoundingClientRect();
+            
+            if (iRect.bottom >= pRect.top && iRect.top <= pRect.bottom && iRect.left < pRect.right && iRect.right > pRect.left) {
+                processCollision(type);
+                item.remove();
+                clearInterval(fall);
+            } else if (top > 720) { 
+                item.remove(); 
+                clearInterval(fall); 
+            }
+        }, 16);
+
+        // Intervalo de spawn dinámico
+        setTimeout(spawn, Math.max(150, 900 - (level * 100)));
+    }
+
+    function processCollision(type) {
+        if(type === 'virus') {
+            if(hasShield) {
+                hasShield = false;
+                player.classList.remove('shield-active');
+            } else {
+                lives--;
+                container.classList.add('shake');
+                setTimeout(() => container.classList.remove('shake'), 200);
+            }
+        } else if(type === 'shield') {
+            hasShield = true;
+            player.classList.add('shield-active');
+        } else if(type === 'bonus') {
+            score += 100;
+        } else {
+            score += 10;
+        }
+
+        // Subir nivel cada 200 pts
+        let newLevel = Math.floor(score / 200) + 1;
+        if(newLevel > level) {
+            level = newLevel;
+            showLevelUp();
+        }
+
+        updateUI();
+        if(lives <= 0) gameOver();
+    }
+
+    function showLevelUp() {
+        const colors = ['#00ffcc', '#3498db', '#9b59b6', '#f1c40f', '#e67e22'];
+        let color = colors[(level-1) % colors.length];
+        container.style.borderColor = color;
+        document.querySelectorAll('.label').forEach(l => l.style.color = color);
+    }
+
+    function updateUI() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('lvl').innerText = level;
+        document.getElementById('lives').innerText = '❤️'.repeat(Math.max(0, lives));
+    }
+
+    function gameOver() {
+        active = false;
+        document.getElementById('overlay').style.display = 'flex';
+        document.getElementById('final-stats').innerText = `DATA_COLLECTED: ${score} | LVL_REACHED: ${level}`;
+        loadScores();
+    }
+
+    function saveScore() {
+        const name = document.getElementById('username').value.trim() || "AGENTE_X";
+        database.ref('maxiqueen_neural_dash').push({
+            agent: name,
+            score: score,
+            level: level,
+            date: Date.now()
+        }).then(() => {
+            document.getElementById('username').disabled = true;
+            loadScores();
+        });
+    }
+
+    function loadScores() {
+        database.ref('maxiqueen_neural_dash').orderByChild('score').limitToLast(5).once('value', (snap) => {
+            let html = "<div style='border-bottom:1px solid #333; margin-bottom:5px; padding-bottom:5px'><b>RANKING_GLOBAL_OS</b></div>";
+            let entries = [];
+            snap.forEach(c => entries.push(c.val()));
+            entries.reverse().forEach((data, i) => {
+                html += `<div style="display:flex; justify-content:space-between; margin:4px 0">
+                    <span>${i+1}. ${data.agent}</span>
+                    <span style="color:var(--neon)">${data.score} PTS</span>
+                </div>`;
+            });
+            document.getElementById('leaderboard').innerHTML = html;
+        });
+    }
+
+    spawn();
+</script>
+</body>
+</html>

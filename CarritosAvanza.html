@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MQ-07 | Protocol Overdrive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue: #00f2ff;
+            --purple: #bc13fe;
+            --red: #ff0055;
+            --bg: #050508;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 90vh;
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            background: #000;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border-radius: 20px;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* UI Layer */
+        .os-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+        }
+
+        .stat { background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 10px; border-left: 3px solid var(--blue); }
+        .stat-label { font-size: 10px; color: rgba(255,255,255,0.5); display: block; }
+        .stat-value { font-size: 18px; font-weight: 900; }
+
+        /* Pantallas */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: 0.5s;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .hidden { opacity: 0; pointer-events: none; transform: scale(1.1); }
+
+        h1 { font-size: 2.5rem; margin: 0; background: linear-gradient(to right, var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { color: rgba(255,255,255,0.6); margin-bottom: 30px; font-size: 0.8rem; }
+
+        .btn {
+            background: transparent;
+            border: 2px solid var(--blue);
+            color: var(--blue);
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-family: 'Orbitron';
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .btn:hover { background: var(--blue); color: black; box-shadow: 0 0 30px var(--blue); }
+
+        /* Nivel Up Flash */
+        #level-flash {
+            position: absolute;
+            top: 40%;
+            width: 100%;
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 900;
+            color: white;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 20;
+        }
+
+        .animate-flash { animation: flash-anim 2s forwards; }
+        @keyframes flash-anim {
+            0% { opacity: 0; transform: scale(0.5); }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <div class="os-ui">
+            <div class="stat">
+                <span class="stat-label">DATA BYTES</span>
+                <span id="ui-score" class="stat-value">0</span>
+            </div>
+            <div class="stat" id="level-stat">
+                <span class="stat-label">PHASE</span>
+                <span id="ui-level" class="stat-value">01</span>
+            </div>
+        </div>
+
+        <div id="level-flash">PHASE UP</div>
+
+        <!-- Menu Inicial -->
+        <div id="start-screen" class="overlay">
+            <h1>MQ-07</h1>
+            <p>PROTOCOL OVERDRIVE: INFILTRATION</p>
+            <button class="btn" onclick="game.start()">Initialize Neural Link</button>
+        </div>
+
+        <!-- Game Over -->
+        <div id="death-screen" class="overlay hidden">
+            <h1 style="color: var(--red);">TERMINATED</h1>
+            <p>Neural connection collapsed.</p>
+            <div style="margin-bottom: 20px;">SCORE: <span id="final-score">0</span></div>
+            <button class="btn" onclick="game.start()">Reboot System</button>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Configuración AAA
+    const COLORS = {
+        lvl1: '#00f2ff', // Cyan
+        lvl2: '#bc13fe', // Purple
+        lvl3: '#ff0055', // Red
+        powerup: '#ffff00' // Yellow
+    };
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x; this.y = y;
+            this.color = color;
+            this.size = Math.random() * 4 + 1;
+            this.vx = (Math.random() - 0.5) * 10;
+            this.vy = (Math.random() - 0.5) * 10;
+            this.life = 1.0;
+        }
+        update() { this.x += this.vx; this.y += this.vy; this.life -= 0.02; }
+        draw() {
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    const game = {
+        active: false,
+        score: 0,
+        level: 1,
+        speed: 6,
+        player: null,
+        obstacles: [],
+        particles: [],
+        powerups: [],
+        shake: 0,
+        
+        init() {
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            this.setupControls();
+        },
+
+        resize() {
+            const wrapper = document.getElementById('game-wrapper');
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+        },
+
+        start() {
+            this.active = true;
+            this.score = 0;
+            this.level = 1;
+            this.speed = 7;
+            this.obstacles = [];
+            this.particles = [];
+            this.powerups = [];
+            this.player = {
+                x: canvas.width / 2,
+                y: canvas.height - 100,
+                w: 30, h: 45,
+                targetX: canvas.width / 2,
+                shield: 0,
+                ghosts: []
+            };
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('death-screen').classList.add('hidden');
+            this.loop();
+        },
+
+        setupControls() {
+            const handleAction = (side) => {
+                const lane = canvas.width / 3;
+                if(side === 'left') this.player.targetX = Math.max(50, this.player.targetX - lane);
+                else this.player.targetX = Math.min(canvas.width - 50, this.player.targetX + lane);
+            };
+
+            window.addEventListener('keydown', (e) => {
+                if(e.key === 'ArrowLeft') handleAction('left');
+                if(e.key === 'ArrowRight') handleAction('right');
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                const x = e.touches[0].clientX;
+                handleAction(x < window.innerWidth/2 ? 'left' : 'right');
+            });
+        },
+
+        spawnObstacle() {
+            const chance = 0.02 + (this.level * 0.01);
+            if(Math.random() < chance) {
+                const w = Math.random() * 100 + 100;
+                this.obstacles.push({
+                    x: Math.random() < 0.5 ? 0 : canvas.width - w,
+                    y: -50,
+                    w: w, h: 25,
+                    vx: this.level > 1 ? (Math.random() - 0.5) * this.level * 2 : 0,
+                    color: this.getCurrentColor()
+                });
+            }
+
+            // Spawn Powerup
+            if(Math.random() < 0.005) {
+                this.powerups.push({
+                    x: Math.random() * (canvas.width - 40) + 20,
+                    y: -50,
+                    type: Math.random() < 0.5 ? 'shield' : 'data'
+                });
+            }
+        },
+
+        getCurrentColor() {
+            if(this.level === 1) return COLORS.lvl1;
+            if(this.level === 2) return COLORS.lvl2;
+            return COLORS.lvl3;
+        },
+
+        checkLevelUp() {
+            const nextLevel = Math.floor(this.score / 500) + 1;
+            if(nextLevel > this.level && this.level < 3) {
+                this.level = nextLevel;
+                this.speed += 3;
+                this.triggerFlash();
+            }
+        },
+
+        triggerFlash() {
+            const el = document.getElementById('level-flash');
+            el.textContent = `PHASE 0${this.level}`;
+            el.classList.remove('animate-flash');
+            void el.offsetWidth; // Force reflow
+            el.classList.add('animate-flash');
+            this.shake = 20;
+        },
+
+        gameOver() {
+            this.active = false;
+            this.shake = 30;
+            for(let i=0; i<30; i++) this.particles.push(new Particle(this.player.x, this.player.y, COLORS.lvl1));
+            document.getElementById('final-score').textContent = this.score;
+            document.getElementById('death-screen').classList.remove('hidden');
+        },
+
+        update() {
+            if(!this.active) return;
+
+            this.score += 1;
+            this.checkLevelUp();
+            this.spawnObstacle();
+
+            // Shake decay
+            if(this.shake > 0) this.shake *= 0.9;
+
+            // Player logic
+            this.player.x += (this.player.targetX - this.player.x) * 0.15;
+            if(this.player.shield > 0) this.player.shield -= 1;
+
+            // Ghosts (trail)
+            if(Math.abs(this.player.targetX - this.player.x) > 1) {
+                this.player.ghosts.push({x: this.player.x, y: this.player.y, a: 0.5});
+            }
+            this.player.ghosts.forEach((g, i) => {
+                g.a -= 0.05;
+                if(g.a <= 0) this.player.ghosts.splice(i, 1);
+            });
+
+            // Obstacles
+            this.obstacles.forEach((o, i) => {
+                o.y += this.speed;
+                o.x += o.vx;
+                if(o.x < 0 || o.x + o.w > canvas.width) o.vx *= -1;
+
+                // Collision
+                if(this.rectIntersect(this.player.x - this.player.w/2, this.player.y, this.player.w, this.player.h, o.x, o.y, o.w, o.h)) {
+                    if(this.player.shield > 0) {
+                        this.obstacles.splice(i, 1);
+                        this.player.shield = 0;
+                        this.shake = 10;
+                    } else {
+                        this.gameOver();
+                    }
+                }
+                if(o.y > canvas.height) this.obstacles.splice(i, 1);
+            });
+
+            // Powerups
+            this.powerups.forEach((p, i) => {
+                p.y += this.speed;
+                if(this.rectIntersect(this.player.x - 20, this.player.y, 40, 40, p.x, p.y, 30, 30)) {
+                    if(p.type === 'shield') this.player.shield = 200;
+                    else this.score += 200;
+                    this.powerups.splice(i, 1);
+                }
+            });
+
+            this.particles.forEach((p, i) => {
+                p.update();
+                if(p.life <= 0) this.particles.splice(i, 1);
+            });
+
+            // UI
+            document.getElementById('ui-score').textContent = this.score;
+            document.getElementById('ui-level').textContent = "0" + this.level;
+        },
+
+        rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+            return x2 < x1 + w1 && x2 + w2 > x1 && y2 < y1 + h1 && y2 + h2 > y1;
+        },
+
+        draw() {
+            ctx.save();
+            if(this.shake > 1) ctx.translate(Math.random()*this.shake, Math.random()*this.shake);
+
+            // BG
+            ctx.fillStyle = '#050508';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Perspectiva Grid
+            ctx.strokeStyle = `rgba(0, 242, 255, ${0.05 * this.level})`;
+            for(let i=0; i<canvas.width; i+=40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw Ghosts
+            this.player.ghosts.forEach(g => {
+                ctx.globalAlpha = g.a;
+                ctx.fillStyle = this.getCurrentColor();
+                ctx.fillRect(g.x - this.player.w/2, g.y, this.player.w, this.player.h);
+            });
+            ctx.globalAlpha = 1;
+
+            // Draw Player
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.player.shield > 0 ? COLORS.powerup : this.getCurrentColor();
+            ctx.fillStyle = ctx.shadowColor;
+            
+            // Nave forma
+            ctx.beginPath();
+            ctx.moveTo(this.player.x, this.player.y);
+            ctx.lineTo(this.player.x - this.player.w/2, this.player.y + this.player.h);
+            ctx.lineTo(this.player.x + this.player.w/2, this.player.y + this.player.h);
+            ctx.fill();
+
+            // Draw Obstacles
+            this.obstacles.forEach(o => {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = o.color;
+                ctx.fillStyle = o.color;
+                ctx.fillRect(o.x, o.y, o.w, o.h);
+            });
+
+            // Draw Powerups
+            this.powerups.forEach(p => {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = COLORS.powerup;
+                ctx.fillStyle = COLORS.powerup;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 10, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            this.particles.forEach(p => p.draw());
+
+            ctx.restore();
+        },
+
+        loop() {
+            this.update();
+            this.draw();
+            if(this.active) requestAnimationFrame(() => this.loop());
+        }
+    };
+
+    game.init();
+</script>
+</body>
+</html>

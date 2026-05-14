@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS • CORE WAR 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yellow: #ffcc00; --blue: #0066ff; --red: #ff0033; --dark: #050a15;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
+        body { 
+            background: var(--dark); color: white; font-family: 'Orbitron', sans-serif;
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        /* UI HUD */
+        #hud {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            background: rgba(0, 0, 0, 0.9); padding: 10px;
+            border-bottom: 2px solid var(--blue); z-index: 100;
+        }
+        .stat { text-align: center; }
+        .stat-label { font-size: 0.6rem; color: var(--blue); display: block; }
+        .stat-val { font-size: 1.1rem; font-weight: 900; }
+
+        /* ESCENARIO */
+        #game-container {
+            flex-grow: 1; position: relative; overflow: hidden;
+            background: radial-gradient(circle at center, #0a1a35 0%, #050a15 100%);
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* CONTROLES MÓVIL */
+        #controls {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            padding: 15px; background: #000; border-top: 2px solid var(--blue);
+        }
+        .btn {
+            padding: 20px; border: none; border-radius: 8px; font-family: 'Orbitron';
+            font-weight: 900; text-transform: uppercase; font-size: 1rem;
+        }
+        .btn-atk { background: var(--red); color: white; box-shadow: 0 0 15px var(--red); }
+        .btn-heal { background: var(--yellow); color: black; }
+
+        /* EFECTOS */
+        .glitch { text-shadow: 2px 0 var(--red), -2px 0 var(--blue); animation: glitch 1s infinite; }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <div class="stat"><span class="stat-label">NÚCLEO</span><span id="hp-val" class="stat-val">100</span></div>
+    <div class="stat"><span class="stat-label">CRÉDITOS</span><span id="coin-val" class="stat-val">0</span></div>
+    <div class="stat"><span class="stat-label">RANGO</span><span id="lvl-val" class="stat-val">1</span></div>
+</div>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<div id="controls">
+    <button class="btn btn-atk" id="shootBtn">FUEGO [Espacio]</button>
+    <button class="btn btn-heal" id="healBtn">REPARAR [R]</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const hpEl = document.getElementById('hp-val');
+    const coinEl = document.getElementById('coin-val');
+    const lvlEl = document.getElementById('lvl-val');
+
+    let gameActive = true;
+    let score = 0;
+    let health = 100;
+    let level = 1;
+    let coins = 0;
+
+    // Ajustar resolución
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = canvas.offsetHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Entidades
+    const player = { x: 50, y: 0, size: 40, color: '#0066ff' };
+    const projectiles = [];
+    const enemies = [];
+    const particles = [];
+
+    // Lógica de Juego
+    function spawnEnemy() {
+        if (!gameActive) return;
+        const size = Math.random() * (40 - 20) + 20;
+        enemies.push({
+            x: canvas.width + 50,
+            y: Math.random() * (canvas.height - 100) + 50,
+            size: size,
+            speed: (Math.random() * 2 + 1) * (1 + level * 0.1),
+            hp: 2,
+            color: '#ff0033'
+        });
+        setTimeout(spawnEnemy, 2000 / (1 + level * 0.2));
+    }
+
+    function createExplosion(x, y, color) {
+        for (let i = 0; i < 10; i++) {
+            particles.push({
+                x, y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                life: 1.0,
+                color
+            });
+        }
+    }
+
+    function shoot() {
+        if (!gameActive) return;
+        projectiles.push({
+            x: player.x + 40,
+            y: player.y + 20,
+            speed: 10,
+            size: 8
+        });
+    }
+
+    function heal() {
+        if (coins >= 50 && health < 100) {
+            coins -= 50;
+            health = Math.min(100, health + 30);
+            updateUI();
+        }
+    }
+
+    // Controles
+    document.getElementById('shootBtn').addEventListener('touchstart', (e) => { e.preventDefault(); shoot(); });
+    document.getElementById('shootBtn').addEventListener('click', shoot);
+    document.getElementById('healBtn').addEventListener('click', heal);
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') shoot();
+        if (e.code === 'KeyR') heal();
+    });
+
+    function updateUI() {
+        hpEl.innerText = health;
+        coinEl.innerText = coins;
+        lvlEl.innerText = level;
+        if (health <= 30) hpEl.style.color = 'var(--red)';
+        else hpEl.style.color = 'white';
+    }
+
+    // Loop Principal
+    function update() {
+        if (!gameActive) return;
+
+        player.y = canvas.height / 2 - 20;
+
+        // Proyectiles
+        projectiles.forEach((p, pi) => {
+            p.x += p.speed;
+            if (p.x > canvas.width) projectiles.splice(pi, 1);
+        });
+
+        // Enemigos
+        enemies.forEach((en, ei) => {
+            en.x -= en.speed;
+
+            // Colisión con jugador
+            if (en.x < player.x + player.size && en.x > player.x && 
+                en.y < player.y + player.size && en.y + en.size > player.y) {
+                health -= 10;
+                enemies.splice(ei, 1);
+                createExplosion(en.x, en.y, 'var(--red)');
+                updateUI();
+                if (health <= 0) {
+                    gameActive = false;
+                    alert("MAXIQUEEN OS: CRITICAL FAILURE. REBOOTING...");
+                    location.reload();
+                }
+            }
+
+            // Colisión con proyectiles
+            projectiles.forEach((p, pi) => {
+                if (p.x > en.x && p.x < en.x + en.size && p.y > en.y && p.y < en.y + en.size) {
+                    en.hp--;
+                    projectiles.splice(pi, 1);
+                    if (en.hp <= 0) {
+                        createExplosion(en.x, en.y, 'var(--yellow)');
+                        enemies.splice(ei, 1);
+                        coins += 10;
+                        score++;
+                        if (score % 5 === 0) level++;
+                        updateUI();
+                    }
+                }
+            });
+
+            if (en.x < -50) enemies.splice(ei, 1);
+        });
+
+        // Partículas
+        particles.forEach((pa, pai) => {
+            pa.x += pa.vx;
+            pa.y += pa.vy;
+            pa.life -= 0.02;
+            if (pa.life <= 0) particles.splice(pai, 1);
+        });
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Grid de fondo
+        ctx.strokeStyle = 'rgba(0, 102, 255, 0.1)';
+        ctx.beginPath();
+        for(let i=0; i<canvas.width; i+=50) { ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); }
+        for(let i=0; i<canvas.height; i+=50) { ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); }
+        ctx.stroke();
+
+        // Jugador (Nave 2026)
+        ctx.fillStyle = player.color;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = player.color;
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(player.x + 30, player.y + 10, 10, 20); // Cabina
+
+        // Proyectiles
+        ctx.fillStyle = 'var(--yellow)';
+        projectiles.forEach(p => {
+            ctx.shadowColor = 'var(--yellow)';
+            ctx.fillRect(p.x, p.y, p.size * 2, p.size / 2);
+        });
+
+        // Enemigos
+        enemies.forEach(en => {
+            ctx.fillStyle = en.color;
+            ctx.shadowColor = en.color;
+            ctx.font = `${en.size}px Arial`;
+            ctx.fillText('👾', en.x, en.y + en.size);
+        });
+
+        // Partículas
+        particles.forEach(pa => {
+            ctx.globalAlpha = pa.life;
+            ctx.fillStyle = pa.color;
+            ctx.fillRect(pa.x, pa.y, 3, 3);
+        });
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+
+        requestAnimationFrame(() => {
+            update();
+            draw();
+        });
+    }
+
+    // Iniciar
+    spawnEnemy();
+    draw();
+</script>
+</body>
+</html>

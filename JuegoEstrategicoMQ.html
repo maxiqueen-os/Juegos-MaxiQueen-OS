@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen Tycoon - AI Business Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --mq-gold: #facc15;
+            --mq-bg: #09090b;
+        }
+
+        body {
+            background-color: var(--mq-bg);
+            color: #f4f4f5;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .glass {
+            background: rgba(24, 24, 27, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(250, 204, 21, 0.1);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #18181b;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--mq-gold);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .action-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn:active { transform: scale(0.95); }
+        .action-btn:disabled { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
+
+        .log-entry {
+            animation: slideIn 0.3s ease-out forwards;
+            border-left: 2px solid var(--mq-gold);
+            margin-bottom: 5px;
+            padding-left: 10px;
+            font-size: 0.8rem;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .gold-glow { text-shadow: 0 0 10px rgba(250, 204, 21, 0.5); }
+
+        /* Estilo para las monedas que saltan */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            color: var(--mq-gold);
+            font-weight: bold;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 100;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) opacity(1); }
+            100% { transform: translateY(-50px) opacity(0); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center">
+
+    <div class="w-full max-w-md p-6 glass rounded-[2.5rem] shadow-2xl relative">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-lg rotate-3">
+                    <i class="fas fa-crown text-black text-3xl"></i>
+                </div>
+            </div>
+            <h1 class="text-2xl font-black tracking-tighter gold-glow uppercase italic">MaxiQueen <span class="text-white">Tycoon</span></h1>
+            <p class="text-xs text-zinc-500 tracking-[0.2em] uppercase mt-1">Escala tu imperio digital</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-black/40 p-4 rounded-2xl border border-white/5">
+                <span class="text-[10px] font-bold text-zinc-500 block uppercase">Balance</span>
+                <div class="text-xl font-black text-yellow-400">$<span id="money">0</span></div>
+            </div>
+            <div class="bg-black/40 p-4 rounded-2xl border border-white/5">
+                <span class="text-[10px] font-bold text-zinc-500 block uppercase">Nivel de Red</span>
+                <div class="text-xl font-black text-white">LVL <span id="level">1</span></div>
+            </div>
+        </div>
+
+        <!-- Energy / Capacity -->
+        <div class="mb-8">
+            <div class="flex justify-between text-[10px] font-bold uppercase mb-1">
+                <span>Contenido en Stock</span>
+                <span id="content-count">0 / 10</span>
+            </div>
+            <div class="progress-bar">
+                <div id="content-fill" class="progress-fill bg-blue-500"></div>
+            </div>
+        </div>
+
+        <!-- Main Actions -->
+        <div class="space-y-4 mb-8">
+            <button onclick="crearContenido()" class="action-btn w-full py-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 flex items-center gap-4 px-6 group">
+                <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 group-hover:scale-110 transition">
+                    <i class="fas fa-pen-nib"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-xs font-bold uppercase">Crear Contenido</div>
+                    <div class="text-[10px] text-zinc-500">+1 unidad de valor</div>
+                </div>
+            </button>
+
+            <button id="vender-btn" onclick="vender()" class="action-btn w-full py-4 bg-yellow-400 text-black rounded-2xl flex items-center gap-4 px-6 font-bold disabled:bg-zinc-800 disabled:text-zinc-500">
+                <div class="w-10 h-10 bg-black/10 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-xs uppercase">Liquidar Ventas</div>
+                    <div class="text-[10px]" id="sell-value">Calculando...</div>
+                </div>
+            </button>
+
+            <button id="auto-btn" onclick="automatizar()" class="action-btn w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl flex items-center gap-4 px-6 opacity-0 transition-opacity">
+                <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-xs font-bold uppercase">Mejorar IA Core</div>
+                    <div class="text-[10px]" id="auto-cost">Costo: $50</div>
+                </div>
+            </button>
+        </div>
+
+        <!-- Log Area -->
+        <div id="log" class="h-24 overflow-y-auto mb-6 scrollbar-hide text-zinc-500 font-mono">
+            <div class="log-entry">Bienvenido, Operador. Sistema inicializado.</div>
+        </div>
+
+        <!-- CTA Final -->
+        <button onclick="finalizar()" class="w-full py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-black rounded-2xl shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:brightness-110 transition uppercase tracking-widest text-sm">
+            🚀 Activar Sistema Real
+        </button>
+    </div>
+
+    <script>
+        let state = {
+            money: 0,
+            level: 1,
+            content: 0,
+            maxContent: 10,
+            autoLevel: 0,
+            sellPrice: 15,
+            upgradeCost: 50
+        };
+
+        const moneyEl = document.getElementById('money');
+        const levelEl = document.getElementById('level');
+        const contentCountEl = document.getElementById('content-count');
+        const contentFillEl = document.getElementById('content-fill');
+        const sellValueEl = document.getElementById('sell-value');
+        const autoCostEl = document.getElementById('auto-cost');
+        const autoBtn = document.getElementById('auto-btn');
+        const logEl = document.getElementById('log');
+
+        function updateUI() {
+            moneyEl.innerText = Math.floor(state.money);
+            levelEl.innerText = state.level;
+            contentCountEl.innerText = `${state.content} / ${state.maxContent}`;
+            contentFillEl.style.width = `${(state.content / state.maxContent) * 100}%`;
+            sellValueEl.innerText = `Valor actual: $${state.content * state.sellPrice}`;
+            autoCostEl.innerText = `Costo: $${state.upgradeCost}`;
+
+            // Mostrar botón de automatizar si tiene suficiente dinero o ya tiene nivel
+            if (state.money >= 30 || state.autoLevel > 0) {
+                autoBtn.classList.remove('opacity-0');
+            }
+        }
+
+        function addLog(msg, color = "") {
+            const div = document.createElement('div');
+            div.className = "log-entry";
+            if(color) div.style.color = color;
+            div.innerText = `> ${msg}`;
+            logEl.prepend(div);
+            if(logEl.children.length > 5) logEl.lastChild.remove();
+        }
+
+        function createParticle(x, y, text) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.innerText = text;
+            p.style.left = x + 'px';
+            p.style.top = y + 'px';
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 1000);
+        }
+
+        function crearContenido() {
+            if (state.content < state.maxContent) {
+                state.content++;
+                addLog("Contenido generado exitosamente.");
+                updateUI();
+            } else {
+                addLog("¡Almacén lleno! Liquida ventas primero.", "#ef4444");
+            }
+        }
+
+        function vender() {
+            if (state.content > 0) {
+                const gain = state.content * state.sellPrice;
+                state.money += gain;
+                addLog(`Venta completada: +$${gain}`, "#facc15");
+                state.content = 0;
+                
+                // Efecto visual de partículas
+                const btn = document.getElementById('vender-btn').getBoundingClientRect();
+                createParticle(btn.left + 50, btn.top, `+$${gain}`);
+                
+                updateUI();
+            } else {
+                addLog("No tienes nada que vender.", "#ef4444");
+            }
+        }
+
+        function automatizar() {
+            if (state.money >= state.upgradeCost) {
+                state.money -= state.upgradeCost;
+                state.autoLevel++;
+                state.level++;
+                state.maxContent += 5;
+                state.sellPrice += 5;
+                state.upgradeCost = Math.floor(state.upgradeCost * 1.8);
+                
+                addLog(`SISTEMA ACTUALIZADO AL NIVEL ${state.level}`, "#818cf8");
+                updateUI();
+            } else {
+                addLog("Fondos insuficientes para el upgrade.", "#ef4444");
+            }
+        }
+
+        // Loop de Automatización
+        setInterval(() => {
+            if (state.autoLevel > 0) {
+                if (state.content < state.maxContent) {
+                    state.content += (0.1 * state.autoLevel);
+                    if (state.content > state.maxContent) state.content = state.maxContent;
+                    updateUI();
+                }
+            }
+        }, 1000);
+
+        function finalizar() {
+            addLog("REDIRECCIONANDO AL NÚCLEO REAL...", "#facc15");
+            setTimeout(() => {
+                window.location.href = "master_link.html"; // O el link que prefieras
+            }, 1500);
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>

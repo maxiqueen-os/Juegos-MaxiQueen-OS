@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Security Core | MaxiQueen OS</title>
+    <style>
+        :root {
+            --bg: #020617;
+            --primary: #00f2ff;
+            --accent: #7000ff;
+            --danger: #ef4444;
+            --text: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .hud {
+            display: flex;
+            gap: 20px;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 15px 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .stat-box { text-align: center; }
+        .stat-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: bold; }
+        .stat-value { font-size: 1.4rem; font-weight: 900; color: var(--primary); }
+
+        canvas {
+            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(112, 0, 255, 0.2);
+            cursor: crosshair;
+        }
+
+        .controls {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="hud">
+    <div class="stat-box">
+        <div class="stat-label">Créditos MQ</div>
+        <div id="credits" class="stat-value">500</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Integridad</div>
+        <div id="health" class="stat-value" style="color: var(--danger)">100%</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Nivel</div>
+        <div id="level" class="stat-value" style="color: #fbbf24">1</div>
+    </div>
+</div>
+
+<canvas id="gameCanvas" width="450" height="650"></canvas>
+
+<div class="controls">
+    Click para desplegar <b>Firewall Node</b> (Coste: 150 MQ)
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+// Configuración de Estado
+let state = {
+    credits: 500,
+    health: 100,
+    level: 1,
+    gameOver: false,
+    frames: 0
+};
+
+const towers = [];
+const enemies = [];
+const bullets = [];
+
+class Tower {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.range = 150;
+        this.cooldown = 0;
+        this.fireRate = 30; // Frames entre disparos
+    }
+    draw() {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#7000ff";
+        ctx.fillStyle = "#7000ff";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+        ctx.fill();
+        // Núcleo
+        ctx.fillStyle = "#00f2ff";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+    update() {
+        if (this.cooldown > 0) this.cooldown--;
+        if (this.cooldown === 0) {
+            const target = enemies.find(e => Math.hypot(e.x - this.x, e.y - this.y) < this.range);
+            if (target) {
+                bullets.push(new Bullet(this.x, this.y, target));
+                this.cooldown = this.fireRate;
+            }
+        }
+    }
+}
+
+class Enemy {
+    constructor() {
+        this.x = Math.random() * (canvas.width - 40) + 20;
+        this.y = -20;
+        this.speed = 1 + (state.level * 0.2);
+        this.hp = 2 + Math.floor(state.level / 2);
+        this.maxHp = this.hp;
+    }
+    draw() {
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(this.x - 10, this.y - 10, 20, 20);
+        // Barra de vida
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(this.x - 10, this.y - 18, 20, 3);
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(this.x - 10, this.y - 18, (this.hp / this.maxHp) * 20, 3);
+    }
+    update() {
+        this.y += this.speed;
+    }
+}
+
+class Bullet {
+    constructor(x, y, target) {
+        this.x = x;
+        this.y = y;
+        this.target = target;
+        this.speed = 7;
+    }
+    draw() {
+        ctx.fillStyle = "#00f2ff";
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = "#00f2ff";
+        ctx.fillRect(this.x - 2, this.y - 2, 4, 4);
+        ctx.shadowBlur = 0;
+    }
+    update() {
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        this.x += (dx / dist) * this.speed;
+        this.y += (dy / dist) * this.speed;
+    }
+}
+
+// Interacción
+canvas.addEventListener("click", (e) => {
+    if (state.credits >= 150) {
+        const rect = canvas.getBoundingClientRect();
+        towers.push(new Tower(e.clientX - rect.left, e.clientY - rect.top));
+        state.credits -= 150;
+        updateUI();
+    }
+});
+
+function updateUI() {
+    document.getElementById("credits").innerText = state.credits;
+    document.getElementById("health").innerText = state.health + "%";
+    document.getElementById("level").innerText = state.level;
+}
+
+function gameLoop() {
+    if (state.gameOver) return;
+
+    // Fondo con estela
+    ctx.fillStyle = "rgba(2, 6, 23, 0.3)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Spawn de enemigos basado en frames y nivel
+    if (state.frames % Math.max(20, 100 - state.level * 5) === 0) {
+        enemies.push(new Enemy());
+    }
+
+    // Subir de nivel cada 1000 frames
+    if (state.frames > 0 && state.frames % 1000 === 0) {
+        state.level++;
+        updateUI();
+    }
+
+    // Actualizar Torres
+    towers.forEach(t => { t.update(); t.draw(); });
+
+    // Actualizar Balas
+    bullets.forEach((b, bi) => {
+        b.update();
+        b.draw();
+        // Colisión con objetivo
+        if (Math.hypot(b.x - b.target.x, b.y - b.target.y) < 10) {
+            b.target.hp--;
+            bullets.splice(bi, 1);
+            if (b.target.hp <= 0) {
+                const ei = enemies.indexOf(b.target);
+                if (ei > -1) {
+                    enemies.splice(ei, 1);
+                    state.credits += 25;
+                    updateUI();
+                }
+            }
+        }
+    });
+
+    // Actualizar Enemigos
+    enemies.forEach((e, ei) => {
+        e.update();
+        e.draw();
+        if (e.y > canvas.height) {
+            enemies.splice(ei, 1);
+            state.health -= 10;
+            updateUI();
+            if (state.health <= 0) {
+                state.gameOver = true;
+                alert("SISTEMA COMPROMETIDO - Game Over");
+                location.reload();
+            }
+        }
+    });
+
+    state.frames++;
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>

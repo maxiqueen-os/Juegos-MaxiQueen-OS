@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen OS - Cyber Zombie Defense</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+        body {
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(circle at 50% 50%, #1a1a24 0%, #050505 100%);
+        }
+
+        .glass-panel {
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(250, 204, 21, 0.2);
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        }
+
+        canvas {
+            background-color: #0a0a0f;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: crosshair;
+        }
+
+        .mq-gold { color: #facc15; }
+        .mq-gold-bg { background-color: #facc15; color: black; }
+        
+        .btn-game {
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .btn-game:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+        }
+        .btn-game:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #333;
+            color: #666;
+        }
+
+        #game-over-screen, #victory-screen {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row gap-6 p-4">
+
+    <!-- Panel Lateral: Estadísticas -->
+    <div class="w-full md:w-64 glass-panel rounded-2xl p-6 flex flex-col h-full max-h-[600px]">
+        <div class="text-center mb-6">
+            <h1 class="text-xl font-black italic mq-gold mb-1">MQ<span class="text-white">_DEFENSE</span></h1>
+            <p class="text-[9px] text-zinc-500 uppercase tracking-widest">Protocolo Anti-Virus</p>
+        </div>
+
+        <div class="space-y-4 mb-6">
+            <div class="bg-black/50 p-3 rounded-xl border border-white/5">
+                <p class="text-[10px] text-zinc-500 uppercase">FONDOS OPERATIVOS</p>
+                <p class="text-2xl font-bold text-green-400">$<span id="ui-money">100</span></p>
+            </div>
+            
+            <div class="bg-black/50 p-3 rounded-xl border border-white/5">
+                <p class="text-[10px] text-zinc-500 uppercase">INTEGRIDAD DEL NÚCLEO</p>
+                <p class="text-2xl font-bold text-red-400"><i class="fas fa-heart text-sm"></i> <span id="ui-lives">20</span></p>
+            </div>
+
+            <div class="bg-black/50 p-3 rounded-xl border border-white/5">
+                <p class="text-[10px] text-zinc-500 uppercase">NIVEL DE AMENAZA (WAVE)</p>
+                <p class="text-2xl font-bold mq-gold"><span id="ui-wave">1</span> / 10</p>
+            </div>
+        </div>
+
+        <div class="flex-1">
+            <p class="text-xs mb-2 text-zinc-400">HERRAMIENTAS:</p>
+            <div class="bg-blue-500/10 border border-blue-500/30 p-3 rounded-xl cursor-pointer hover:bg-blue-500/20 transition text-center">
+                <i class="fas fa-satellite-dish text-blue-400 text-2xl mb-2"></i>
+                <p class="text-xs font-bold text-white">Torreta Láser</p>
+                <p class="text-[10px] mq-gold">Costo: $50</p>
+            </div>
+            <p class="text-[9px] text-zinc-500 mt-3 text-center">Haz clic en el mapa gris oscuro para colocar torretas.</p>
+        </div>
+
+        <button id="btn-start-wave" class="btn-game w-full py-3 mq-gold-bg rounded-xl mt-4 text-sm" onclick="startWave()">
+            <i class="fas fa-play mr-2"></i> INICIAR OLEADA
+        </button>
+    </div>
+
+    <!-- Área de Juego (Canvas) -->
+    <div class="relative">
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        
+        <!-- Pantallas de Fin de Juego -->
+        <div id="game-over-screen" class="rounded-lg">
+            <i class="fas fa-skull text-6xl text-red-500 mb-4 animate-pulse"></i>
+            <h2 class="text-4xl font-black text-white mb-2">BRECHA CRÍTICA</h2>
+            <p class="text-zinc-400 mb-6">El núcleo de MaxiQueen OS fue infectado.</p>
+            <button onclick="location.reload()" class="btn-game px-8 py-3 bg-red-600 text-white rounded-xl">Reinciar Sistema</button>
+        </div>
+
+        <div id="victory-screen" class="rounded-lg">
+            <i class="fas fa-shield-check text-6xl text-green-500 mb-4"></i>
+            <h2 class="text-4xl font-black text-white mb-2">SISTEMA ASEGURADO</h2>
+            <p class="text-zinc-400 mb-6">Amenaza zombie neutralizada. Eres un Operador Elite.</p>
+            <button onclick="location.reload()" class="btn-game px-8 py-3 mq-gold-bg rounded-xl">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- CONFIGURACIÓN DEL JUEGO ---
+        const GRID_SIZE = 50;
+        const COLS = canvas.width / GRID_SIZE; // 12
+        const ROWS = canvas.height / GRID_SIZE; // 12
+        
+        let state = {
+            money: 100,
+            lives: 20,
+            wave: 1,
+            maxWaves: 10,
+            isWaveActive: false,
+            gameOver: false,
+            victory: false
+        };
+
+        // --- MAPA Y RUTA ---
+        // 0 = Espacio libre para torres, 1 = Camino
+        const mapGrid = [
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+            [1,1,1,1,0,0,0,0,0,0,0,0],
+            [0,0,0,1,0,0,0,1,1,1,1,0],
+            [0,0,0,1,0,0,0,1,0,0,1,0],
+            [0,0,0,1,1,1,1,1,0,0,1,0],
+            [0,0,0,0,0,0,0,0,0,0,1,0],
+            [0,0,0,0,0,0,0,0,0,0,1,0],
+            [0,1,1,1,1,1,1,1,1,1,1,0],
+            [0,1,0,0,0,0,0,0,0,0,0,0],
+            [0,1,0,0,0,1,1,1,1,1,1,1], /* Final en el borde derecho */
+            [0,1,1,1,1,1,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0],
+        ];
+
+        // Puntos exactos del centro de los caminos para que los enemigos se muevan
+        const pathPoints = [
+            {x: 0, y: 1}, {x: 3, y: 1}, {x: 3, y: 4}, {x: 7, y: 4}, 
+            {x: 7, y: 2}, {x: 10, y: 2}, {x: 10, y: 7}, {x: 1, y: 7},
+            {x: 1, y: 10}, {x: 5, y: 10}, {x: 5, y: 9}, {x: 12, y: 9} // Salida
+        ].map(p => ({ x: p.x * GRID_SIZE + GRID_SIZE/2, y: p.y * GRID_SIZE + GRID_SIZE/2 }));
+
+        // --- ENTIDADES ---
+        let enemies = [];
+        let towers = [];
+        let projectiles = [];
+        let particles = [];
+        
+        let spawnQueue = [];
+        let spawnTimer = 0;
+
+        // Configuración de oleadas (cantidad, salud base, velocidad)
+        const waveConfig = [
+            { count: 5, hp: 50, speed: 1.5, interval: 60 },
+            { count: 10, hp: 80, speed: 1.5, interval: 50 },
+            { count: 15, hp: 120, speed: 1.8, interval: 45 },
+            { count: 20, hp: 180, speed: 2.0, interval: 40 },
+            { count: 25, hp: 250, speed: 2.0, interval: 35 },
+            { count: 30, hp: 400, speed: 2.2, interval: 30 },
+            { count: 40, hp: 600, speed: 2.5, interval: 25 },
+            { count: 50, hp: 900, speed: 2.5, interval: 20 },
+            { count: 60, hp: 1500, speed: 3.0, interval: 15 },
+            { count: 1, hp: 15000, speed: 1.0, interval: 100, isBoss: true } // Boss Wave
+        ];
+
+        // --- CLASES ---
+        class Enemy {
+            constructor(hp, speed, isBoss = false) {
+                this.x = pathPoints[0].x - GRID_SIZE; // Empieza fuera de la pantalla
+                this.y = pathPoints[0].y;
+                this.pathIndex = 0;
+                this.maxHp = hp;
+                this.hp = hp;
+                this.speed = speed;
+                this.radius = isBoss ? 20 : 12;
+                this.reward = isBoss ? 500 : 10;
+                this.isBoss = isBoss;
+            }
+
+            update() {
+                const target = pathPoints[this.pathIndex];
+                if (!target) return;
+
+                const dx = target.x - this.x;
+                const dy = target.y - this.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist < this.speed) {
+                    this.x = target.x;
+                    this.y = target.y;
+                    this.pathIndex++;
+                    
+                    if (this.pathIndex >= pathPoints.length) {
+                        // Llegó a la base
+                        state.lives -= this.isBoss ? 10 : 1;
+                        this.hp = 0; // Matarlo para sacarlo del array
+                        updateUI();
+                    }
+                } else {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.isBoss ? '#ef4444' : '#f43f5e'; // Rojo zombie
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Detalles visuales (ojos)
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(this.x - 4, this.y - 4, 3, 3);
+                ctx.fillRect(this.x + 1, this.y - 4, 3, 3);
+
+                // Barra de vida
+                ctx.fillStyle = '#333';
+                ctx.fillRect(this.x - 15, this.y - 20, 30, 4);
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(this.x - 15, this.y - 20, 30 * (this.hp / this.maxHp), 4);
+            }
+        }
+
+        class Tower {
+            constructor(c, r) {
+                this.c = c;
+                this.r = r;
+                this.x = c * GRID_SIZE + GRID_SIZE/2;
+                this.y = r * GRID_SIZE + GRID_SIZE/2;
+                this.range = 120;
+                this.damage = 25;
+                this.cooldown = 40; // frames
+                this.timer = 0;
+                this.target = null;
+                this.angle = 0;
+            }
+
+            update() {
+                if (this.timer > 0) this.timer--;
+
+                // Buscar objetivo más cercano
+                let nearest = null;
+                let minDist = this.range;
+
+                for (let e of enemies) {
+                    const dist = Math.hypot(this.x - e.x, this.y - e.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = e;
+                    }
+                }
+                
+                this.target = nearest;
+
+                if (this.target) {
+                    this.angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                    if (this.timer === 0) {
+                        this.shoot();
+                    }
+                }
+            }
+
+            shoot() {
+                projectiles.push(new Projectile(this.x, this.y, this.target, this.damage));
+                this.timer = this.cooldown;
+            }
+
+            draw() {
+                // Base de la torre
+                ctx.fillStyle = '#1e3a8a'; // Azul oscuro
+                ctx.fillRect(this.x - 15, this.y - 15, 30, 30);
+                
+                // Cañón (Gira)
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.fillStyle = '#3b82f6'; // Azul claro
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#06b6d4'; // Cañon cyan
+                ctx.fillRect(0, -3, 20, 6);
+                ctx.restore();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, target, damage) {
+                this.x = x;
+                this.y = y;
+                this.target = target;
+                this.damage = damage;
+                this.speed = 8;
+            }
+
+            update() {
+                if (!this.target || this.target.hp <= 0) {
+                    this.hit = true; // Si el target muere antes de que llegue el tiro
+                    return;
+                }
+
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist < this.speed) {
+                    this.target.hp -= this.damage;
+                    this.hit = true;
+                    // Generar chispas
+                    for(let i=0; i<3; i++) particles.push(new Particle(this.target.x, this.target.y, '#06b6d4'));
+                    
+                    if (this.target.hp <= 0) {
+                        state.money += this.target.reward;
+                        updateUI();
+                    }
+                } else {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#facc15';
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.life = 20;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.life / 20;
+                ctx.fillRect(this.x, this.y, 3, 3);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // --- SISTEMA ---
+        function startWave() {
+            if (state.isWaveActive || state.gameOver || state.victory) return;
+            
+            state.isWaveActive = true;
+            document.getElementById('btn-start-wave').disabled = true;
+            
+            const currentConfig = waveConfig[state.wave - 1];
+            spawnQueue = currentConfig.count;
+            spawnTimer = 0;
+        }
+
+        function checkWaveProgress() {
+            if (state.isWaveActive && spawnQueue === 0 && enemies.length === 0) {
+                state.isWaveActive = false;
+                
+                if (state.wave >= state.maxWaves) {
+                    state.victory = true;
+                    document.getElementById('victory-screen').style.display = 'flex';
+                } else {
+                    state.wave++;
+                    state.money += 100; // Bono por pasar ronda
+                    document.getElementById('btn-start-wave').disabled = false;
+                    document.getElementById('btn-start-wave').innerHTML = `<i class="fas fa-play mr-2"></i> INICIAR OLEADA ${state.wave}`;
+                    updateUI();
+                }
+            }
+
+            if (state.lives <= 0 && !state.gameOver) {
+                state.gameOver = true;
+                document.getElementById('game-over-screen').style.display = 'flex';
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('ui-money').innerText = state.money;
+            document.getElementById('ui-lives').innerText = Math.max(0, state.lives);
+            document.getElementById('ui-wave').innerText = state.wave;
+        }
+
+        // Interacción del Usuario: Colocar Torres
+        canvas.addEventListener('click', (e) => {
+            if (state.gameOver || state.victory) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const c = Math.floor(x / GRID_SIZE);
+            const r = Math.floor(y / GRID_SIZE);
+
+            if (c >= 0 && c < COLS && r >= 0 && r < ROWS) {
+                if (mapGrid[r][c] === 0) { // Si es espacio construible
+                    // Verificar si ya hay torre
+                    const hasTower = towers.some(t => t.c === c && t.r === r);
+                    if (!hasTower && state.money >= 50) {
+                        state.money -= 50;
+                        towers.push(new Tower(c, r));
+                        updateUI();
+                    }
+                }
+            }
+        });
+
+        // Hover effect para mostrar rango (Mouse move)
+        let mouseC = -1; let mouseR = -1;
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseC = Math.floor((e.clientX - rect.left) / GRID_SIZE);
+            mouseR = Math.floor((e.clientY - rect.top) / GRID_SIZE);
+        });
+        canvas.addEventListener('mouseout', () => { mouseC = -1; mouseR = -1; });
+
+        // --- BUCLE PRINCIPAL (RENDER & UPDATE) ---
+        function drawMap() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (mapGrid[r][c] === 1) {
+                        // Camino (Neon Tech Track)
+                        ctx.fillStyle = '#1e1e24';
+                        ctx.fillRect(c * GRID_SIZE, r * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                        ctx.strokeStyle = '#333';
+                        ctx.strokeRect(c * GRID_SIZE, r * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                    } else {
+                        // Fondo construible
+                        ctx.fillStyle = '#0a0a0f';
+                        ctx.fillRect(c * GRID_SIZE, r * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                        ctx.strokeStyle = '#111';
+                        ctx.strokeRect(c * GRID_SIZE, r * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                    }
+                }
+            }
+            
+            // Efecto Hover para construir
+            if (mouseC >= 0 && mouseC < COLS && mouseR >= 0 && mouseR < ROWS) {
+                if (mapGrid[mouseR][mouseC] === 0) {
+                    ctx.fillStyle = 'rgba(250, 204, 21, 0.2)';
+                    ctx.fillRect(mouseC * GRID_SIZE, mouseR * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                    
+                    // Mostrar rango tentativo
+                    ctx.beginPath();
+                    ctx.arc(mouseC * GRID_SIZE + GRID_SIZE/2, mouseR * GRID_SIZE + GRID_SIZE/2, 120, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+                    ctx.fillRect(mouseC * GRID_SIZE, mouseR * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                }
+            }
+        }
+
+        function gameLoop() {
+            if (!state.gameOver && !state.victory) {
+                // Logic Updates
+                if (state.isWaveActive && spawnQueue > 0) {
+                    spawnTimer++;
+                    const cfg = waveConfig[state.wave - 1];
+                    if (spawnTimer >= cfg.interval) {
+                        enemies.push(new Enemy(cfg.hp, cfg.speed, cfg.isBoss));
+                        spawnQueue--;
+                        spawnTimer = 0;
+                    }
+                }
+
+                towers.forEach(t => t.update());
+                projectiles.forEach(p => p.update());
+                enemies.forEach(e => e.update());
+                particles.forEach(p => p.update());
+
+                // Cleanup arrays
+                projectiles = projectiles.filter(p => !p.hit);
+                enemies = enemies.filter(e => e.hp > 0);
+                particles = particles.filter(p => p.life > 0);
+
+                checkWaveProgress();
+            }
+
+            // Draw
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            towers.forEach(t => t.draw());
+            enemies.forEach(e => e.draw());
+            projectiles.forEach(p => p.draw());
+            particles.forEach(p => p.draw());
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Inicializar
+        updateUI();
+        window.onload = () => {
+            gameLoop();
+        };
+    </script>
+</body>
+</html>

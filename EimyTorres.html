@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Queen Towers - Tactical Merge 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+        :root {
+            --bg-deep: #050507;
+            --mq-gold: #facc15;
+            --mq-cyan: #06b6d4;
+            --mq-purple: #a855f7;
+            --mq-red: #ef4444;
+            --panel: rgba(20, 20, 25, 0.9);
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            margin: 0; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+            user-select: none;
+        }
+
+        /* Efecto Scanline */
+        body::before {
+            content: " ";
+            position: fixed; inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 50; pointer-events: none;
+        }
+
+        .tech-grid {
+            position: fixed; inset: 0;
+            background-image: linear-gradient(rgba(250, 204, 21, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(250, 204, 21, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px; z-index: -1;
+        }
+
+        #board {
+            display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+            gap: 12px; width: 100%; max-width: 420px; aspect-ratio: 1/1;
+            background: rgba(255, 255, 255, 0.03); padding: 15px;
+            border-radius: 20px; border: 1px solid rgba(250, 204, 21, 0.3);
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+        }
+
+        .cell {
+            background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            position: relative; transition: all 0.3s;
+        }
+
+        .cell.drag-over { background: rgba(6, 182, 212, 0.2); border-color: var(--mq-cyan); }
+
+        .tower {
+            width: 85%; height: 85%; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: grab; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; z-index: 10;
+        }
+
+        .tower-level-1 { background: #1f2937; border: 2px solid #4b5563; color: #9ca3af; }
+        .tower-level-2 { background: #0e7490; border: 2px solid var(--mq-cyan); box-shadow: 0 0 15px var(--mq-cyan); }
+        .tower-level-3 { background: #6b21a8; border: 2px solid var(--mq-purple); box-shadow: 0 0 15px var(--mq-purple); }
+        .tower-level-4 { background: #a16207; border: 2px solid var(--mq-gold); color: #000; box-shadow: 0 0 20px var(--mq-gold); }
+        .tower-level-5 { background: #9f1239; border: 2px solid var(--mq-red); box-shadow: 0 0 25px var(--mq-red); }
+
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 var(--mq-red), -2px 0 var(--mq-cyan); }
+            50% { text-shadow: -2px 0 var(--mq-red), 2px 0 var(--mq-cyan); }
+            100% { text-shadow: 2px 0 var(--mq-red), -2px 0 var(--mq-cyan); }
+        }
+        .glitch-text { animation: glitch 0.2s infinite alternate; }
+
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.1); width: 100%; position: relative; overflow: hidden; }
+        #income-fill { height: 100%; background: var(--mq-gold); width: 0%; transition: width 0.1s linear; }
+
+        .particle { position: absolute; pointer-events: none; border-radius: 50%; z-index: 100; }
+    </style>
+</head>
+<body>
+
+    <div class="tech-grid"></div>
+
+    <header class="status-bar p-4 flex justify-between items-center bg-black/80 border-b border-yellow-500/20">
+        <div>
+            <h1 id="game-title" class="text-xl font-black italic text-yellow-400">Eimy <span class="text-white">TOWERS</span></h1>
+            <div class="progress-bar mt-1"><div id="income-fill"></div></div>
+        </div>
+        <div class="text-right">
+            <span class="text-[10px] text-zinc-500 font-bold uppercase block">Créditos Sistema</span>
+            <span id="currency" class="text-2xl font-bold text-white tabular-nums">0</span>
+        </div>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-center p-6">
+        <div id="board"></div>
+
+        <div class="mt-8 w-full max-w-[420px]">
+            <button id="buyBtn" class="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl flex justify-between px-6 transition-all active:scale-95 disabled:opacity-30">
+                <span>GENERAR UNIDAD T1</span>
+                <span id="cost-label" class="bg-black/10 px-2 rounded">10</span>
+            </button>
+        </div>
+    </main>
+
+    <footer class="p-4 flex justify-between items-center bg-black/60 border-t border-white/5">
+        <button id="reset" class="text-zinc-600 hover:text-red-500 text-[10px] font-bold uppercase tracking-widest">
+            <i class="fas fa-power-off mr-1"></i> Hard Reset
+        </button>
+        <div id="highscore" class="text-xs font-bold text-zinc-400">
+            STABLE_BUILD: <span class="text-yellow-400" id="high-val">1</span>
+        </div>
+    </footer>
+
+    <script>
+        const TOWER_DATA = {
+            1: { icon: 'fa-microchip', class: 'tower-level-1' },
+            2: { icon: 'fa-bolt', class: 'tower-level-2' },
+            3: { icon: 'fa-shield-halved', class: 'tower-level-3' },
+            4: { icon: 'fa-gun', class: 'tower-level-4' },
+            5: { icon: 'fa-crown', class: 'tower-level-5' }
+        };
+
+        let state = {
+            credits: 50,
+            buyCost: 10,
+            grid: Array(16).fill(null),
+            highLevel: 1,
+            draggedIdx: null,
+            incomeTick: 0
+        };
+
+        // Cargar persistencia
+        const saved = localStorage.getItem('queen_towers_v2');
+        if (saved) state = JSON.parse(saved);
+
+        const boardEl = document.getElementById('board');
+        const currencyEl = document.getElementById('currency');
+        const buyBtn = document.getElementById('buyBtn');
+        const costLabel = document.getElementById('cost-label');
+        const incomeFill = document.getElementById('income-fill');
+
+        function init() {
+            boardEl.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                
+                cell.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    if (state.draggedIdx !== null) cell.classList.add('drag-over');
+                });
+                
+                cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+                cell.addEventListener('drop', e => {
+                    e.preventDefault();
+                    cell.classList.remove('drag-over');
+                    handleMerge(state.draggedIdx, i);
+                });
+
+                boardEl.appendChild(cell);
+            }
+            render();
+            startPassiveIncome();
+        }
+
+        function render() {
+            currencyEl.textContent = Math.floor(state.credits);
+            costLabel.textContent = state.buyCost;
+            document.getElementById('high-val').textContent = state.highLevel;
+            
+            const cells = document.querySelectorAll('.cell');
+            state.grid.forEach((data, idx) => {
+                const cell = cells[idx];
+                cell.innerHTML = '';
+                if (data) {
+                    const tower = document.createElement('div');
+                    tower.className = `tower ${TOWER_DATA[data.level].class}`;
+                    tower.draggable = true;
+                    tower.innerHTML = `<i class="fas ${TOWER_DATA[data.level].icon} text-xl"></i>`;
+                    
+                    tower.addEventListener('dragstart', () => {
+                        state.draggedIdx = idx;
+                        tower.classList.add('opacity-30');
+                    });
+                    
+                    tower.addEventListener('dragend', () => {
+                        state.draggedIdx = null;
+                        render();
+                    });
+
+                    cell.appendChild(tower);
+                }
+            });
+
+            buyBtn.disabled = state.credits < state.buyCost || !state.grid.includes(null);
+            localStorage.setItem('queen_towers_v2', JSON.stringify(state));
+        }
+
+        function handleMerge(fromIdx, toIdx) {
+            if (fromIdx === null || fromIdx === toIdx) return;
+            
+            const from = state.grid[fromIdx];
+            const to = state.grid[toIdx];
+
+            if (!from) return;
+
+            if (to && to.level === from.level && from.level < 5) {
+                state.grid[toIdx] = { level: from.level + 1 };
+                state.grid[fromIdx] = null;
+                state.credits += from.level * 15;
+                if (state.grid[toIdx].level > state.highLevel) {
+                    state.highLevel = state.grid[toIdx].level;
+                    triggerLevelGlitch();
+                }
+                spawnParticles(toIdx, '#facc15');
+            } else if (!to) {
+                state.grid[toIdx] = from;
+                state.grid[fromIdx] = null;
+            }
+            render();
+        }
+
+        function buyTower() {
+            const emptyIdx = state.grid.indexOf(null);
+            if (emptyIdx !== -1 && state.credits >= state.buyCost) {
+                state.credits -= state.buyCost;
+                state.grid[emptyIdx] = { level: 1 };
+                state.buyCost = Math.floor(state.buyCost * 1.2);
+                render();
+            }
+        }
+
+        function startPassiveIncome() {
+            setInterval(() => {
+                state.incomeTick += 2;
+                if (state.incomeTick >= 100) {
+                    state.incomeTick = 0;
+                    let passive = 0;
+                    state.grid.forEach(t => { if(t) passive += t.level * 2; });
+                    state.credits += passive;
+                    render();
+                }
+                incomeFill.style.width = state.incomeTick + '%';
+            }, 100);
+        }
+
+        function spawnParticles(idx, color) {
+            const cell = document.querySelectorAll('.cell')[idx];
+            const rect = cell.getBoundingClientRect();
+            for (let i = 0; i < 10; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.background = color;
+                p.style.width = '6px'; p.style.height = '6px';
+                p.style.left = (rect.left + rect.width / 2) + 'px';
+                p.style.top = (rect.top + rect.height / 2) + 'px';
+                document.body.appendChild(p);
+
+                const destX = (Math.random() - 0.5) * 100;
+                const destY = (Math.random() - 0.5) * 100;
+
+                p.animate([
+                    { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                    { transform: `translate(${destX}px, ${destY}px) scale(0)`, opacity: 0 }
+                ], { duration: 600, easing: 'ease-out' }).onfinish = () => p.remove();
+            }
+        }
+
+        function triggerLevelGlitch() {
+            const title = document.getElementById('game-title');
+            title.classList.add('glitch-text');
+            setTimeout(() => title.classList.remove('glitch-text'), 1000);
+        }
+
+        buyBtn.addEventListener('click', buyTower);
+        document.getElementById('reset').addEventListener('click', () => {
+            if(confirm("¿CONFIRMAR PURGA DE DATOS?")) {
+                localStorage.removeItem('queen_towers_v2');
+                location.reload();
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

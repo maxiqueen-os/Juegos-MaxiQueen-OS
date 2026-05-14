@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MaxiQueen: Protocolo de Enlace</title>
+    <style>
+        body { margin: 0; background: #050505; color: #00ff41; font-family: 'Courier New', monospace; overflow: hidden; display: flex; }
+        #sidebar { width: 250px; border-right: 2px solid #00ff41; padding: 20px; box-sizing: border-box; }
+        canvas { flex-grow: 1; background: radial-gradient(circle, #0a1a0a 0%, #000 100%); cursor: crosshair; }
+        .stat { margin-bottom: 15px; font-size: 14px; }
+        .btn { border: 1px solid #00ff41; padding: 10px; text-align: center; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn:hover { background: #00ff41; color: #000; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>MQ_OS CORE</h2>
+    <div class="stat">ENERGÍA: <span id="energy">100</span>%</div>
+    <div class="stat">CONSUMO: <span id="load">0</span> kW</div>
+    <div class="stat">NÚCLEOS: <span id="cores">1</span>/10</div>
+    <hr>
+    <div class="btn" onclick="setMode('tower')">CONSTRUIR NODO</div>
+    <div class="btn" onclick="location.reload()">REINICIAR SISTEMA</div>
+    <p id="alert" style="color: #ff3e3e;"></p>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth - 250;
+    canvas.height = window.innerHeight;
+
+    let energy = 100;
+    let load = 0;
+    let mode = 'tower';
+    let towers = [];
+    let enemies = [];
+    let base = { x: canvas.width/2, y: canvas.height/2, r: 30 };
+
+    // Estructura de Torre
+    class Tower {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.r = 15;
+            this.connected = false;
+            this.range = 150; // Rango para conectar a otras
+            this.fireRange = 200;
+            this.loadValue = 5; // Cuánta energía consume
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+            ctx.strokeStyle = this.connected ? '#00ff41' : '#ff3e3e';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            if(this.connected) {
+                ctx.fillStyle = 'rgba(0, 255, 65, 0.2)';
+                ctx.fill();
+            }
+        }
+    }
+
+    class Enemy {
+        constructor() {
+            this.x = Math.random() < 0.5 ? 0 : canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.speed = 1.2;
+            this.hp = 50;
+        }
+
+        update() {
+            // Buscan el nodo más cercano para destruirlo
+            let target = base;
+            let minDist = Math.hypot(this.x - base.x, this.y - base.y);
+
+            towers.forEach(t => {
+                let d = Math.hypot(this.x - t.x, this.y - t.y);
+                if(d < minDist && t.connected) {
+                    minDist = d;
+                    target = t;
+                }
+            });
+
+            let angle = Math.atan2(target.y - this.y, target.x - this.x);
+            this.x += Math.cos(angle) * this.speed;
+            this.y += Math.sin(angle) * this.speed;
+
+            // Daño al tocar
+            if(minDist < 20) {
+                if(target === base) energy -= 0.1;
+                else {
+                    towers = towers.filter(t => t !== target);
+                    updateLogic();
+                }
+            }
+        }
+
+        draw() {
+            ctx.fillStyle = '#ff3e3e';
+            ctx.fillRect(this.x - 5, this.y - 5, 10, 10);
+        }
+    }
+
+    canvas.addEventListener('click', (e) => {
+        if(energy <= 0) return;
+        const rect = canvas.getBoundingClientRect();
+        let newX = e.clientX - rect.left;
+        let newY = e.clientY - rect.top;
+        
+        let t = new Tower(newX, newY);
+        towers.push(t);
+        updateLogic();
+    });
+
+    function updateLogic() {
+        // Reset de conexiones
+        towers.forEach(t => t.connected = false);
+        load = towers.length * 5;
+
+        // Algoritmo de encadenamiento (Chain Connection)
+        let checkQueue = [base];
+        let visited = new Set();
+
+        while(checkQueue.length > 0) {
+            let curr = checkQueue.shift();
+            towers.forEach(t => {
+                if(!t.connected) {
+                    let d = Math.hypot(curr.x - t.x, curr.y - t.y);
+                    if(d < (curr.range || 150)) {
+                        t.connected = true;
+                        checkQueue.push(t);
+                    }
+                }
+            });
+        }
+        
+        document.getElementById('load').innerText = load;
+        document.getElementById('cores').innerText = towers.length;
+    }
+
+    function spawnEnemy() {
+        if(enemies.length < 10) enemies.push(new Enemy());
+    }
+
+    setInterval(spawnEnemy, 2000);
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Dibujar Base
+        ctx.beginPath();
+        ctx.arc(base.x, base.y, base.r, 0, Math.PI*2);
+        ctx.strokeStyle = '#00ff41';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.fillStyle = '#003300';
+        ctx.fill();
+
+        // Dibujar Conexiones (Líneas de red)
+        towers.forEach(t => {
+            if(t.connected) {
+                // Línea a la base o a otra torre
+                let parent = base;
+                let minDist = Math.hypot(t.x - base.x, t.y - base.y);
+                
+                towers.forEach(other => {
+                    if(other !== t && other.connected) {
+                        let d = Math.hypot(t.x - other.x, t.y - other.y);
+                        if(d < minDist) {
+                            minDist = d;
+                            parent = other;
+                        }
+                    }
+                });
+
+                ctx.beginPath();
+                ctx.moveTo(t.x, t.y);
+                ctx.lineTo(parent.x, parent.y);
+                ctx.strokeStyle = 'rgba(0, 255, 65, 0.4)';
+                ctx.stroke();
+            }
+            t.draw();
+        });
+
+        // Actualizar Enemigos
+        enemies.forEach((en, index) => {
+            en.update();
+            en.draw();
+            // Las torres conectadas disparan
+            towers.forEach(t => {
+                if(t.connected && Math.hypot(t.x - en.x, t.y - en.y) < t.fireRange) {
+                    ctx.beginPath();
+                    ctx.moveTo(t.x, t.y);
+                    ctx.lineTo(en.x, en.y);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                    en.hp -= 1;
+                }
+            });
+            if(en.hp <= 0) enemies.splice(index, 1);
+        });
+
+        // Consumo de energía constante
+        if(load > 0) energy -= (load / 1000);
+        document.getElementById('energy').innerText = Math.max(0, Math.floor(energy));
+
+        if(energy <= 0) {
+            document.getElementById('alert').innerText = "SISTEMA APAGADO: FALLO DE ENERGÍA";
+        } else {
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    gameLoop();
+</script>
+</body>
+</html>

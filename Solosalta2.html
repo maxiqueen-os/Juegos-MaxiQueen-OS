@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen Mini-Game</title>
+    <style>
+        body { margin: 0; background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        canvas { background: #000; border: 2px solid #333; max-width: 100%; max-height: 100%; }
+        #ui { position: absolute; top: 10px; left: 10px; color: white; font-size: 20px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui">Monedas: <span id="score">0</span>/5</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        // Ajuste de pantalla
+        canvas.width = 800;
+        canvas.height = 600;
+
+        // Variables de juego
+        let score = 0;
+        let gameOver = false;
+        let win = false;
+
+        const player = {
+            x: 50, y: 500, radius: 15, color: "#007bff",
+            velX: 0, velY: 0, speed: 5, jump: -15,
+            gravity: 0.8, onGround: false
+        };
+
+        let coins = [];
+        let enemies = [];
+
+        function init() {
+            score = 0;
+            gameOver = false;
+            win = false;
+            player.x = 50;
+            player.y = 500;
+            player.velY = 0;
+            
+            // Crear 5 monedas
+            coins = [];
+            for(let i=0; i<5; i++) {
+                coins.push({ x: Math.random()*700+50, y: Math.random()*400+100, size: 20 });
+            }
+
+            // Crear 3 enemigos (triángulos)
+            enemies = [];
+            for(let i=0; i<3; i++) {
+                enemies.push({ x: 200 + (i*200), y: 100, size: 30, velY: 3 + i });
+            }
+        }
+
+        // Controles
+        const keys = {};
+        window.addEventListener("keydown", e => keys[e.code] = true);
+        window.addEventListener("keyup", e => keys[e.code] = false);
+        
+        // Control táctil simple (tocar pantalla para saltar/reiniciar)
+        window.addEventListener("touchstart", () => {
+            if (gameOver || win) init();
+            else if (player.onGround) player.velY = player.jump;
+        });
+
+        function update() {
+            if (gameOver || win) return;
+
+            // Movimiento lateral
+            if (keys["ArrowLeft"]) player.x -= player.speed;
+            if (keys["ArrowRight"]) player.x += player.speed;
+            if (keys["Space"] && player.onGround) player.velY = player.jump;
+
+            // Física
+            player.velY += player.gravity;
+            player.y += player.velY;
+
+            // Suelo simple
+            if (player.y + player.radius > 550) {
+                player.y = 550 - player.radius;
+                player.velY = 0;
+                player.onGround = true;
+            } else {
+                player.onGround = false;
+            }
+
+            // Colisión Monedas
+            coins.forEach((coin, index) => {
+                let dx = player.x - coin.x;
+                let dy = player.y - coin.y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+                if (distance < player.radius + coin.size/2) {
+                    coins.splice(index, 1);
+                    score++;
+                    if (score >= 5) win = true;
+                }
+            });
+
+            // Movimiento y colisión Enemigos
+            enemies.forEach(en => {
+                en.y += en.velY;
+                if (en.y < 50 || en.y > 500) en.velY *= -1;
+
+                let dx = player.x - (en.x + en.size/2);
+                let dy = player.y - (en.y + en.size/2);
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < player.radius + en.size/2) gameOver = true;
+            });
+
+            scoreElement.innerText = score;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Suelo
+            ctx.fillStyle = "#228b22";
+            ctx.fillRect(0, 550, canvas.width, 50);
+
+            // Jugador
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
+            ctx.fill();
+
+            // Monedas (Cuadrados Amarillos)
+            ctx.fillStyle = "gold";
+            coins.forEach(c => ctx.fillRect(c.x - 10, c.y - 10, 20, 20));
+
+            // Enemigos (Triángulos Rojos)
+            ctx.fillStyle = "red";
+            enemies.forEach(en => {
+                ctx.beginPath();
+                ctx.moveTo(en.x, en.y + en.size);
+                ctx.lineTo(en.x + en.size/2, en.y);
+                ctx.lineTo(en.x + en.size, en.y + en.size);
+                ctx.fill();
+            });
+
+            if (win) {
+                ctx.fillStyle = "white";
+                ctx.font = "50px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("¡GANASTE!", canvas.width/2, canvas.height/2);
+                ctx.font = "20px Arial";
+                ctx.fillText("Toca o presiona 'R' para reiniciar", canvas.width/2, canvas.height/2 + 50);
+            }
+
+            if (gameOver) {
+                ctx.fillStyle = "red";
+                ctx.font = "50px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+                ctx.fillStyle = "white";
+                ctx.font = "20px Arial";
+                ctx.fillText("Toca o presiona 'R' para intentar", canvas.width/2, canvas.height/2 + 50);
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            if ((gameOver || win) && keys["KeyR"]) init();
+            requestAnimationFrame(loop);
+        }
+
+        init();
+        loop();
+    </script>
+</body>
+</html>

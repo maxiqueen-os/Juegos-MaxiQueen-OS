@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiGame: Cyber Collector Pro</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --neon: #4ecca3; --danger: #e94560; --bg: #0a0a12; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #game-container { position: relative; width: 100%; max-width: 400px; height: 600px; background: #16213e; border: 4px solid var(--neon); border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px rgba(78, 204, 163, 0.3); }
+        #player { position: absolute; bottom: 20px; width: 80px; height: 12px; background: var(--neon); box-shadow: 0 0 15px var(--neon); border-radius: 10px; cursor: pointer; left: 160px; }
+        .item { position: absolute; font-weight: bold; font-size: 22px; }
+        #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; z-index: 10; font-family: monospace; font-size: 18px; }
+        #overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; padding: 20px; text-align: center; }
+        table { width: 100%; margin: 15px 0; border-collapse: collapse; font-size: 14px; }
+        th, td { border-bottom: 1px solid #333; padding: 8px; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid var(--neon); margin-bottom: 10px; width: 80%; background: #111; color: white; }
+        button { padding: 10px 20px; background: var(--neon); border: none; cursor: pointer; font-weight: bold; border-radius: 5px; color: #0a0a12; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui">
+        <div id="score">PTS: 0</div>
+        <div id="lives">❤️❤️❤️</div>
+    </div>
+    <div id="player"></div>
+
+    <div id="overlay">
+        <h2 id="status-title">GAME OVER</h2>
+        <div id="input-area">
+            <input type="text" id="username" placeholder="Tu Nombre/Alias" maxlength="12">
+            <button onclick="saveScore()">GUARDAR RÉCORD</button>
+        </div>
+        <div id="leaderboard-area">
+            <h3>TOP 5 GLOBAL</h3>
+            <table>
+                <thead><tr><th>PLAYER</th><th>SCORE</th></tr></thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+            <button onclick="location.reload()">JUGAR DE NUEVO</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // CONFIGURACIÓN OFICIAL MAXIQUEEN OS
+    const firebaseConfig = {
+      apiKey: "AIzaSyDdwqmNnw8d5oKeEM1SmpYh0SJOO79OoMU",
+      authDomain: "maxiqueen-os-3982f.firebaseapp.com",
+      projectId: "maxiqueen-os-3982f",
+      storageBucket: "maxiqueen-os-3982f.firebasestorage.app",
+      messagingSenderId: "39693674275",
+      appId: "1:39693674275:web:6d983fabd77440b5090e96",
+      databaseURL: "https://maxiqueen-os-3982f-default-rtdb.firebaseio.com/" 
+    };
+
+    // Inicializar
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let score = 0, lives = 3, active = true;
+    const player = document.getElementById('player');
+    const container = document.getElementById('game-container');
+
+    // Control de movimiento
+    const handleMove = (e) => {
+        const rect = container.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let x = clientX - rect.left - 40;
+        player.style.left = Math.max(0, Math.min(x, 320)) + 'px';
+    };
+    container.addEventListener('mousemove', handleMove);
+    container.addEventListener('touchmove', handleMove);
+
+    function spawn() {
+        if(!active) return;
+        const item = document.createElement('div');
+        const isTrap = Math.random() > 0.8;
+        item.className = 'item';
+        item.innerText = isTrap ? '👾' : '💎';
+        item.style.color = isTrap ? 'var(--danger)' : 'var(--neon)';
+        item.style.left = Math.random() * 370 + 'px';
+        item.style.top = '-30px';
+        container.appendChild(item);
+
+        let fall = setInterval(() => {
+            if(!active) { item.remove(); clearInterval(fall); return; }
+            let top = parseFloat(item.style.top) + (4 + score/150);
+            item.style.top = top + 'px';
+
+            let pRect = player.getBoundingClientRect(), iRect = item.getBoundingClientRect();
+            if (iRect.bottom >= pRect.top && iRect.left < pRect.right && iRect.right > pRect.left) {
+                if(isTrap) lives--; else score += 10;
+                document.getElementById('score').innerText = `PTS: ${score}`;
+                document.getElementById('lives').innerText = '❤️'.repeat(Math.max(0, lives));
+                if(lives <= 0) endGame();
+                item.remove(); clearInterval(fall);
+            } else if (top > 600) { 
+                item.remove(); clearInterval(fall); 
+            }
+        }, 16);
+        setTimeout(spawn, Math.max(250, 1000 - score/2));
+    }
+
+    function endGame() {
+        active = false;
+        document.getElementById('overlay').style.display = 'flex';
+        loadLeaderboard();
+    }
+
+    function saveScore() {
+        const name = document.getElementById('username').value.trim() || "Anónimo";
+        if(score > 0) {
+            database.ref('leaderboard').push({ name, score, date: Date.now() });
+            document.getElementById('input-area').innerHTML = "<h4>Puntaje sincronizado.</h4>";
+        }
+    }
+
+    function loadLeaderboard() {
+        database.ref('leaderboard').orderByChild('score').limitToLast(5).on('value', (snap) => {
+            let list = [];
+            snap.forEach(c => list.push(c.val()));
+            list.reverse();
+            document.getElementById('leaderboard-body').innerHTML = list.map(s => 
+                `<tr><td>${s.name}</td><td>${s.score}</td></tr>`).join('');
+        });
+    }
+
+    spawn();
+</script>
+</body>
+</html>

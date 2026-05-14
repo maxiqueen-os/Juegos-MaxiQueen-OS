@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS | NEON RUNNER AAA</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --mq-gold: #FFD700;
+            --mq-blue: #0052FF;
+            --mq-red: #FF2B2B;
+            --mq-black: #020205;
+            --glass: rgba(0, 82, 255, 0.1);
+            --neon-border: 2px solid var(--mq-blue);
+        }
+
+        @font-face {
+            font-family: 'Cyber';
+            src: url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: var(--mq-black);
+            color: white; font-family: 'Orbitron', sans-serif;
+            overflow: hidden; touch-action: none;
+        }
+
+        /* --- CONTENEDOR DEL MOTOR --- */
+        #os-viewport {
+            position: relative; width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle, #0a0a1f 0%, #020205 100%);
+        }
+
+        canvas {
+            display: block;
+            filter: contrast(1.2) saturate(1.2) brightness(1.1);
+        }
+
+        /* --- HUD HOLOGRÁFICO (LAYER 1) --- */
+        #hud {
+            position: absolute; inset: 0; pointer-events: none;
+            padding: 30px; display: flex; flex-direction: column;
+            justify-content: space-between; z-index: 10;
+        }
+
+        .hud-panel {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--mq-blue);
+            padding: 15px 25px;
+            box-shadow: -10px 0 20px rgba(0, 82, 255, 0.2);
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
+        }
+
+        .bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); margin-top: 10px; position: relative; }
+        .bar-fill { height: 100%; width: 100%; background: var(--mq-blue); transition: width 0.3s; box-shadow: 0 0 10px var(--mq-blue); }
+        .bar-energy { background: var(--mq-gold); box-shadow: 0 0 10px var(--mq-gold); }
+
+        /* --- OVERLAYS DE SISTEMA --- */
+        .overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+            display: flex; flex-direction: column; items-center; justify-content: center;
+            z-index: 100; text-align: center; backdrop-filter: blur(5px);
+        }
+
+        .btn-mq {
+            background: transparent; color: var(--mq-gold);
+            border: 2px solid var(--mq-gold); padding: 15px 40px;
+            font-family: 'Cyber'; font-size: 1.2rem; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 3px;
+            position: relative; overflow: hidden;
+            transition: 0.3s; margin-top: 20px;
+        }
+
+        .btn-mq:hover { background: var(--mq-gold); color: black; box-shadow: 0 0 30px var(--mq-gold); }
+
+        /* --- CONTROLES MÓVILES --- */
+        .touch-zone {
+            position: absolute; bottom: 40px; width: 100%;
+            display: flex; justify-content: space-around; pointer-events: auto;
+        }
+
+        .btn-ctrl {
+            width: 80px; height: 80px; border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.05); font-size: 24px;
+        }
+
+        /* --- EFECTOS ESPECIALES --- */
+        .glitch { animation: glitch 0.3s infinite; }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-3px, 2px); }
+            40% { transform: translate(3px, -2px); }
+            100% { transform: translate(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="os-viewport">
+    <canvas id="engineCanvas"></canvas>
+
+    <div id="hud">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div class="hud-panel">
+                <div style="font-size: 10px; color: var(--mq-blue);">SYSTEM_CORE_STATUS</div>
+                <div style="font-size: 1.5rem; color: #fff;" id="score-val">000000</div>
+                <div class="bar-container"><div class="bar-fill" id="hp-bar"></div></div>
+            </div>
+            <div class="hud-panel" style="border-left: none; border-right: 4px solid var(--mq-gold); text-align: right;">
+                <div style="font-size: 10px; color: var(--mq-gold);">ENERGY_RESERVE</div>
+                <div style="font-size: 1.5rem; color: #fff;" id="energy-val">100%</div>
+                <div class="bar-container"><div class="bar-fill bar-energy" id="energy-bar"></div></div>
+            </div>
+        </div>
+
+        <div class="touch-zone">
+            <div class="btn-ctrl" id="btn-left"><i class="fas fa-chevron-left"></i></div>
+            <div class="btn-ctrl" style="width:100px; height:100px; border-color: var(--mq-red);" id="btn-dash"><i class="fas fa-bolt"></i></div>
+            <div class="btn-ctrl" id="btn-right"><i class="fas fa-chevron-right"></i></div>
+        </div>
+    </div>
+
+    <div id="boot-screen" class="overlay">
+        <h1 style="color: var(--mq-blue); letter-spacing: 10px;" class="glitch">MAXIQUEEN OS</h1>
+        <p style="color: var(--mq-gold);">INICIALIZANDO NÚCLEO NEÓN runner_v3.exe</p>
+        <button class="btn-mq" onclick="App.start()">Cargar Enlace</button>
+    </div>
+
+    <div id="game-over" class="overlay" style="display: none;">
+        <h1 style="color: var(--mq-red); font-size: 3rem;">CONEXIÓN PERDIDA</h1>
+        <p id="final-stats"></p>
+        <button class="btn-mq" onclick="location.reload()">Reiniciar Sistema</button>
+    </div>
+</div>
+
+<script>
+/**
+ * MAXIQUEEN GAME ENGINE CORE
+ * Arquitectura: Singleton Application + Entity Manager
+ */
+
+const CONFIG = {
+    colors: { blue: '#0052FF', gold: '#FFD700', red: '#FF2B2B', neon: '#00f2ff' },
+    gravity: 0.8,
+    speedBase: 7,
+    maxHp: 100
+};
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.color = color;
+        this.size = Math.random() * 4;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy;
+        this.life -= 0.02;
+    }
+}
+
+class Obstacle {
+    constructor(canvasWidth, speed) {
+        this.w = Math.random() * 100 + 50;
+        this.h = 20;
+        this.x = Math.random() * (canvasWidth - this.w);
+        this.y = -50;
+        this.speed = speed;
+        this.type = Math.random() > 0.8 ? 'LASER' : 'BLOCK';
+        this.color = this.type === 'LASER' ? CONFIG.colors.red : CONFIG.colors.blue;
+    }
+    update() { this.y += this.speed; }
+}
+
+const App = {
+    canvas: document.getElementById('engineCanvas'),
+    ctx: null,
+    active: false,
+    score: 0,
+    hp: 100,
+    energy: 100,
+    speed: CONFIG.speedBase,
+    
+    player: { x: 0, y: 0, w: 50, h: 50, targetX: 0, dashCooldown: 0 },
+    entities: { obstacles: [], particles: [] },
+
+    init() {
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.setupControls();
+    },
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.player.x = this.canvas.width / 2 - 25;
+        this.player.y = this.canvas.height - 150;
+        this.player.targetX = this.player.x;
+    },
+
+    setupControls() {
+        // Teclado
+        window.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowLeft') this.player.targetX -= 100;
+            if(e.key === 'ArrowRight') this.player.targetX += 100;
+            if(e.key === ' ') this.dash();
+        });
+
+        // Touch
+        document.getElementById('btn-left').ontouchstart = () => this.player.targetX -= 100;
+        document.getElementById('btn-right').ontouchstart = () => this.player.targetX += 100;
+        document.getElementById('btn-dash').ontouchstart = () => this.dash();
+    },
+
+    dash() {
+        if(this.energy >= 30) {
+            this.energy -= 30;
+            this.speed *= 2;
+            this.createExplosion(this.player.x + 25, this.player.y + 25, CONFIG.colors.gold);
+            setTimeout(() => this.speed = CONFIG.speedBase + (this.score / 1000), 200);
+        }
+    },
+
+    createExplosion(x, y, color) {
+        for(let i=0; i<20; i++) this.entities.particles.push(new Particle(x, y, color));
+    },
+
+    start() {
+        document.getElementById('boot-screen').style.display = 'none';
+        this.active = true;
+        this.loop();
+    },
+
+    update() {
+        if(!this.active) return;
+
+        // Player Logic
+        this.player.x += (this.player.targetX - this.player.x) * 0.15;
+        this.player.x = Math.max(0, Math.min(this.canvas.width - this.player.w, this.player.x));
+        
+        // Energy Recovery
+        if(this.energy < 100) this.energy += 0.2;
+
+        // Obstacles Logic
+        if(Math.random() < 0.05) this.entities.obstacles.push(new Obstacle(this.canvas.width, this.speed));
+        
+        this.entities.obstacles.forEach((obs, index) => {
+            obs.update();
+            // Colisión AABB
+            if (this.player.x < obs.x + obs.w && this.player.x + this.player.w > obs.x &&
+                this.player.y < obs.y + obs.h && this.player.y + this.player.h > obs.y) {
+                this.hp -= 2;
+                this.createExplosion(this.player.x, this.player.y, CONFIG.colors.red);
+                this.entities.obstacles.splice(index, 1);
+                if(this.hp <= 0) this.gameOver();
+            }
+            if(obs.y > this.canvas.height) this.entities.obstacles.splice(index, 1);
+        });
+
+        // Particles Logic
+        this.entities.particles.forEach((p, index) => {
+            p.update();
+            if(p.life <= 0) this.entities.particles.splice(index, 1);
+        });
+
+        this.score += Math.floor(this.speed / 2);
+        this.speed += 0.001;
+        this.updateHUD();
+    },
+
+    updateHUD() {
+        document.getElementById('score-val').innerText = String(this.score).padStart(6, '0');
+        document.getElementById('hp-bar').style.width = `${this.hp}%`;
+        document.getElementById('energy-bar').style.width = `${this.energy}%`;
+        document.getElementById('energy-val').innerText = `${Math.floor(this.energy)}%`;
+    },
+
+    draw() {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Fondo Parallax Grid
+        ctx.strokeStyle = 'rgba(0, 82, 255, 0.1)';
+        ctx.lineWidth = 2;
+        const offset = (this.score % 100);
+        for(let i=-100; i<this.canvas.height + 100; i+=50) {
+            ctx.beginPath();
+            ctx.moveTo(0, i + offset); ctx.lineTo(this.canvas.width, i + offset);
+            ctx.stroke();
+        }
+
+        // Draw Player (Cyber Nave)
+        ctx.shadowBlur = 20; ctx.shadowColor = CONFIG.colors.neon;
+        ctx.fillStyle = CONFIG.colors.neon;
+        ctx.beginPath();
+        ctx.moveTo(this.player.x + 25, this.player.y);
+        ctx.lineTo(this.player.x, this.player.y + 50);
+        ctx.lineTo(this.player.x + 50, this.player.y + 50);
+        ctx.fill();
+
+        // Draw Obstacles
+        this.entities.obstacles.forEach(obs => {
+            ctx.shadowColor = obs.color;
+            ctx.fillStyle = obs.color;
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        });
+
+        // Draw Particles
+        this.entities.particles.forEach(p => {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+        });
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+    },
+
+    gameOver() {
+        this.active = false;
+        document.getElementById('game-over').style.display = 'flex';
+        document.getElementById('final-stats').innerText = `DATA_HARVESTED: ${this.score}`;
+    },
+
+    loop() {
+        this.update();
+        this.draw();
+        if(this.active) requestAnimationFrame(() => this.loop());
+    }
+};
+
+// Iniciar Sistema
+window.onload = () => App.init();
+
+</script>
+</body>
+</html>

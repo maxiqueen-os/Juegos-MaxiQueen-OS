@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS • NEON PROTOCOL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff; --neon-pink: #ff00ff; --neon-yellow: #fff200; --dark: #02050a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; }
+        
+        body {
+            background: var(--dark); color: white; font-family: 'Orbitron', sans-serif;
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        /* HUD - Optimizado para pulgares */
+        #hud {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            background: rgba(0, 0, 0, 0.9); padding: 15px;
+            border-bottom: 2px solid var(--neon-blue); z-index: 100;
+        }
+        .stat { text-align: center; }
+        .label { font-size: 0.6rem; color: var(--neon-blue); text-transform: uppercase; display: block; }
+        .val { font-size: 1.2rem; font-weight: 900; }
+
+        /* Escenario de Juego */
+        #game-container { flex-grow: 1; position: relative; overflow: hidden; background: #050a15; }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* Controles Móviles Flotantes */
+        .touch-zone {
+            position: absolute; bottom: 0; height: 70%; width: 50%; z-index: 50;
+            display: flex; align-items: flex-end; padding: 30px; opacity: 0.3;
+        }
+        #left-zone { left: 0; justify-content: flex-start; }
+        #right-zone { right: 0; justify-content: flex-end; }
+        .control-hint { font-size: 3rem; color: var(--neon-blue); pointer-events: none; }
+
+        /* Efecto de Daño en pantalla */
+        #glitch-overlay {
+            position: fixed; inset: 0; pointer-events: none;
+            background: rgba(255, 0, 0, 0); transition: background 0.2s; z-index: 60;
+        }
+        .hit { background: rgba(255, 0, 0, 0.3) !important; }
+    </style>
+</head>
+<body>
+
+<div id="glitch-overlay"></div>
+
+<div id="hud">
+    <div class="stat"><span class="label">ESTADO</span><span id="hp-val" class="val">100</span></div>
+    <div class="stat"><span class="label">CRÉDITOS</span><span id="coin-val" class="val">0</span></div>
+    <div class="stat"><span class="label">DISTANCIA</span><span id="dist-val" class="val">0</span></div>
+</div>
+
+<div id="game-container">
+    <canvas id="raceCanvas"></canvas>
+    <!-- Zonas de toque para móvil -->
+    <div id="left-zone" class="touch-zone"><span class="control-hint">◀</span></div>
+    <div id="right-zone" class="touch-zone"><span class="control-hint">▶</span></div>
+</div>
+
+<script>
+    const canvas = document.getElementById('raceCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('glitch-overlay');
+
+    const Game = {
+        hp: 100,
+        coins: 0,
+        dist: 0,
+        lane: 1, // 0, 1, 2
+        laneTargetX: 0,
+        carX: 0,
+        speed: 8,
+        active: true,
+        entities: [],
+        particles: [],
+
+        init() {
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            
+            // Controles PC
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'a') this.move(-1);
+                if (e.key === 'ArrowRight' || e.key === 'd') this.move(1);
+            });
+
+            // Controles Móvil (Zonas de toque)
+            document.getElementById('left-zone').onpointerdown = (e) => { e.preventDefault(); this.move(-1); };
+            document.getElementById('right-zone').onpointerdown = (e) => { e.preventDefault(); this.move(1); };
+
+            this.updateLanePosition();
+            this.carX = this.laneTargetX;
+            this.spawnEntities();
+            this.loop();
+        },
+
+        resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            this.updateLanePosition();
+        },
+
+        updateLanePosition() {
+            const laneWidth = canvas.width / 3;
+            this.laneTargetX = (this.lane * laneWidth) + (laneWidth / 2);
+        },
+
+        move(dir) {
+            this.lane = Math.max(0, Math.min(2, this.lane + dir));
+            this.updateLanePosition();
+        },
+
+        spawnEntities() {
+            if (!this.active) return;
+            const type = Math.random() > 0.3 ? 'enemy' : 'coin';
+            this.entities.push({
+                x: (Math.floor(Math.random() * 3) * (canvas.width / 3)) + (canvas.width / 6),
+                y: -100,
+                type: type,
+                speed: this.speed + (this.dist / 500)
+            });
+            setTimeout(() => this.spawnEntities(), 1000 / (1 + this.dist / 1000));
+        },
+
+        drawCar(x, y) {
+            ctx.save();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00f3ff';
+            ctx.fillStyle = '#00f3ff';
+            // Chasis
+            ctx.beginPath();
+            ctx.moveTo(x - 20, y + 60);
+            ctx.lineTo(x + 20, y + 60);
+            ctx.lineTo(x + 15, y);
+            ctx.lineTo(x - 15, y);
+            ctx.fill();
+            // Luces
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x - 12, y + 5, 5, 10);
+            ctx.fillRect(x + 7, y + 5, 5, 10);
+            ctx.restore();
+        },
+
+        drawRoad() {
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.1)';
+            ctx.setLineDash([40, 40]);
+            ctx.lineDashOffset = -this.dist % 80;
+            for (let i = 1; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * (canvas.width / 3), 0);
+                ctx.lineTo(i * (canvas.width / 3), canvas.height);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        },
+
+        loop() {
+            if (!this.active) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            this.drawRoad();
+            this.dist += this.speed / 2;
+
+            // Suavizado del carro (Lerp)
+            this.carX += (this.laneTargetX - this.carX) * 0.15;
+            this.drawCar(this.carX, canvas.height - 150);
+
+            // Procesar Entidades
+            this.entities.forEach((ent, index) => {
+                ent.y += ent.speed;
+
+                if (ent.type === 'enemy') {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
+                    ctx.fillRect(ent.x - 25, ent.y, 50, 70);
+                    
+                    // Colisión
+                    if (Math.abs(ent.x - this.carX) < 40 && Math.abs(ent.y - (canvas.height - 150)) < 60) {
+                        this.hp -= 20;
+                        this.entities.splice(index, 1);
+                        this.screenShake();
+                        if (this.hp <= 0) this.gameOver();
+                    }
+                } else {
+                    ctx.fillStyle = '#fff200';
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#fff200';
+                    ctx.beginPath();
+                    ctx.arc(ent.x, ent.y, 15, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Recolección
+                    if (Math.abs(ent.x - this.carX) < 40 && Math.abs(ent.y - (canvas.height - 150)) < 40) {
+                        this.coins += 10;
+                        this.entities.splice(index, 1);
+                    }
+                }
+
+                if (ent.y > canvas.height) this.entities.splice(index, 1);
+            });
+
+            this.updateHUD();
+            requestAnimationFrame(() => this.loop());
+        },
+
+        updateHUD() {
+            document.getElementById('hp-val').innerText = this.hp;
+            document.getElementById('coin-val').innerText = this.coins;
+            document.getElementById('dist-val').innerText = Math.floor(this.dist);
+        },
+
+        screenShake() {
+            overlay.classList.add('hit');
+            setTimeout(() => overlay.classList.remove('hit'), 200);
+        },
+
+        gameOver() {
+            this.active = false;
+            alert("SISTEMA CRÍTICO: VEHÍCULO FUERA DE SERVICIO\nCréditos obtenidos: " + this.coins);
+            location.reload();
+        }
+    };
+
+    window.onload = () => Game.init();
+</script>
+</body>
+</html>

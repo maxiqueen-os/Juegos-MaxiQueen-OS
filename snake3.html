@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS | NEON RUNNER v4.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --mq-gold: #FFD700; --mq-blue: #0052FF; --mq-red: #FF2B2B; --mq-black: #020205;
+            --neon-glow: 0 0 15px var(--mq-blue);
+        }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--mq-black); color: white; font-family: 'Orbitron', sans-serif;
+            overflow: hidden; touch-action: none;
+        }
+        #viewport { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        canvas { display: block; filter: contrast(1.1) saturate(1.2); }
+
+        /* HUD HOLOGRÁFICO */
+        #hud {
+            position: absolute; inset: 0; pointer-events: none; padding: 20px;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .hud-glass {
+            background: rgba(0, 82, 255, 0.1); backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 82, 255, 0.4); padding: 12px;
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
+        }
+        .boss-warning {
+            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
+            color: var(--mq-red); font-size: 1.5rem; display: none; text-align: center;
+            text-shadow: 0 0 20px var(--mq-red); animation: blink 0.4s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); } }
+
+        /* BOTONES DE ACCIÓN */
+        .ctrl-group { display: flex; justify-content: space-around; pointer-events: auto; padding-bottom: 20px; gap: 10px; }
+        .btn-action {
+            width: 70px; height: 70px; border: 2px solid var(--mq-blue); border-radius: 15px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0, 82, 255, 0.1); color: white; font-size: 1.5rem;
+            transition: 0.1s;
+        }
+        .btn-action:active { background: var(--mq-blue); transform: scale(0.9); }
+        #fireBtn { border-color: var(--mq-red); color: var(--mq-red); box-shadow: 0 0 10px var(--mq-red); }
+        #dashBtn { border-color: var(--mq-gold); color: var(--mq-gold); box-shadow: 0 0 10px var(--mq-gold); }
+
+        .modal {
+            position: absolute; inset: 0; background: rgba(2, 2, 5, 0.98);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="viewport">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="hud">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div class="hud-glass" style="min-width: 150px;">
+                <small style="color: var(--mq-blue); font-size: 10px;">DATA_STREAM</small>
+                <div id="score" style="font-size: 1.5rem;">000000</div>
+                <small style="color: var(--mq-gold);">RECORD: <span id="hi-score">0</span></small>
+            </div>
+            <div id="boss-ui" style="display:none; width: 45%;" class="hud-glass">
+                <small style="color: var(--mq-red);">IA_BOSS_INTEGRITY</small>
+                <div style="height: 6px; background: #222; margin-top: 5px; border-radius: 3px;">
+                    <div id="boss-bar" style="height: 100%; background: var(--mq-red); width: 100%; transition: width 0.2s;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="alert" class="boss-warning">¡ADVERTENCIA!<br>FIREWALL_BOSS DETECTADO</div>
+
+        <div class="ctrl-group">
+            <div id="leftBtn" class="btn-action"><i class="fas fa-arrow-left"></i></div>
+            <div id="fireBtn" class="btn-action" style="width: 85px; height: 85px;"><i class="fas fa-crosshairs"></i></div>
+            <div id="dashBtn" class="btn-action"><i class="fas fa-bolt"></i></div>
+            <div id="rightBtn" class="btn-action"><i class="fas fa-arrow-right"></i></div>
+        </div>
+    </div>
+
+    <div id="start-screen" class="modal">
+        <h1 style="color: var(--mq-blue); letter-spacing: 10px; margin: 0;">MAXIQUEEN OS</h1>
+        <p style="color: var(--mq-gold); font-size: 12px; margin-bottom: 30px;">NEON_RUNNER : COMBAT_EDITION</p>
+        <button class="btn-mq" style="padding: 15px 40px; background: transparent; color: var(--mq-gold); border: 2px solid var(--mq-gold); font-family: 'Orbitron'; cursor: pointer;" onclick="Game.init()">BOOT_CORE</button>
+    </div>
+</div>
+
+<script>
+const Game = {
+    canvas: document.getElementById('gameCanvas'),
+    ctx: null,
+    active: false,
+    score: 0,
+    hiScore: localStorage.getItem('mq_hi_score') || 0,
+    bossActive: false,
+    bossHp: 100,
+    shake: 0,
+    particles: [],
+    bullets: [], // Balas del jugador
+    enemyBullets: [], // Balas del boss
+    obstacles: [],
+
+    player: { x: 0, y: 0, w: 45, h: 45, targetX: 0, dashCooldown: 0 },
+
+    init() {
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.player.y = this.canvas.height - 180;
+        this.player.x = this.canvas.width / 2 - 22;
+        this.player.targetX = this.player.x;
+        
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('hi-score').innerText = this.hiScore;
+        this.active = true;
+        this.setupControls();
+        this.loop();
+    },
+
+    setupControls() {
+        const move = (d) => this.player.targetX += d * 100;
+        
+        document.getElementById('leftBtn').onpointerdown = (e) => { e.preventDefault(); move(-1); };
+        document.getElementById('rightBtn').onpointerdown = (e) => { e.preventDefault(); move(1); };
+        
+        document.getElementById('fireBtn').onpointerdown = (e) => {
+            e.preventDefault();
+            this.bullets.push({ x: this.player.x + 20, y: this.player.y, speed: 15 });
+        };
+
+        document.getElementById('dashBtn').onpointerdown = (e) => {
+            e.preventDefault();
+            if(this.player.dashCooldown <= 0) {
+                let dir = (this.player.targetX > this.player.x) ? 1 : -1;
+                this.player.targetX += dir * 200;
+                this.player.dashCooldown = 30;
+                this.shake = 10;
+                this.createExplosion(this.player.x + 22, this.player.y + 22, '#FFD700');
+            }
+        };
+    },
+
+    createExplosion(x, y, color) {
+        for(let i=0; i<10; i++) {
+            this.particles.push({
+                x, y, 
+                vx: (Math.random()-0.5)*10, 
+                vy: (Math.random()-0.5)*10, 
+                life: 1.0, color
+            });
+        }
+    },
+
+    update() {
+        if(!this.active) return;
+
+        // Player move suavizado
+        this.player.x += (this.player.targetX - this.player.x) * 0.2;
+        this.player.x = Math.max(10, Math.min(this.canvas.width - 55, this.player.x));
+        if(this.player.dashCooldown > 0) this.player.dashCooldown--;
+
+        // Boss Logic
+        if(this.score > 0 && this.score % 4000 < 30 && !this.bossActive) {
+            this.bossActive = true;
+            this.bossHp = 100;
+            document.getElementById('alert').style.display = 'block';
+            document.getElementById('boss-ui').style.display = 'block';
+            setTimeout(() => document.getElementById('alert').style.display = 'none', 3000);
+        }
+
+        if(this.bossActive) {
+            let bx = (this.canvas.width/2) + Math.sin(Date.now()/400) * (this.canvas.width/3);
+            if(Math.random() < 0.08) this.enemyBullets.push({ x: bx + 50, y: 120, r: 10, speed: 8 });
+            
+            // Colisión balas jugador -> Boss
+            this.bullets.forEach((b, bi) => {
+                if(b.y < 150 && b.x > bx && b.x < bx + 100) {
+                    this.bossHp -= 2;
+                    this.bullets.splice(bi, 1);
+                    this.createExplosion(b.x, b.y, '#FF2B2B');
+                    this.shake = 5;
+                    document.getElementById('boss-bar').style.width = this.bossHp + '%';
+                }
+            });
+
+            if(this.bossHp <= 0) {
+                this.bossActive = false;
+                this.score += 5000;
+                document.getElementById('boss-ui').style.display = 'none';
+                this.createExplosion(bx + 50, 100, '#FFD700');
+            }
+        }
+
+        // Balas Jugador
+        this.bullets.forEach((b, i) => {
+            b.y -= b.speed;
+            if(b.y < 0) this.bullets.splice(i, 1);
+        });
+
+        // Obstáculos y Colisiones
+        if(!this.bossActive && Math.random() < 0.06) {
+            this.obstacles.push({ x: Math.random()*(this.canvas.width-60), y: -50, w: 60, h: 25, hp: 1 });
+        }
+
+        this.obstacles.forEach((ob, i) => {
+            ob.y += 7 + (this.score/5000);
+            
+            // Jugador choca con obstáculo
+            if(this.checkRect(this.player, ob)) this.gameOver();
+
+            // Bala destruye obstáculo
+            this.bullets.forEach((b, bi) => {
+                if(this.checkRect({x:b.x, y:b.y, w:5, h:10}, ob)) {
+                    this.createExplosion(ob.x + 30, ob.y + 12, '#0052FF');
+                    this.obstacles.splice(i, 1);
+                    this.bullets.splice(bi, 1);
+                    this.score += 200;
+                }
+            });
+
+            if(ob.y > this.canvas.height) this.obstacles.splice(i, 1);
+        });
+
+        // Balas Enemigas
+        this.enemyBullets.forEach((eb, i) => {
+            eb.y += eb.speed;
+            if(Math.hypot(this.player.x+22-eb.x, this.player.y+22-eb.y) < 30) this.gameOver();
+            if(eb.y > this.canvas.height) this.enemyBullets.splice(i, 1);
+        });
+
+        // Partículas
+        this.particles.forEach((p, i) => {
+            p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+            if(p.life <= 0) this.particles.splice(i, 1);
+        });
+
+        this.score++;
+        document.getElementById('score').innerText = String(this.score).padStart(6, '0');
+        if(this.shake > 0) this.shake--;
+    },
+
+    checkRect(r1, r2) {
+        return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+    },
+
+    draw() {
+        const ctx = this.ctx;
+        ctx.save();
+        if(this.shake > 0) ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        
+        // Limpieza con trail
+        ctx.fillStyle = 'rgba(2, 2, 5, 0.3)';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(0, 82, 255, 0.05)';
+        for(let i=0; i<this.canvas.width; i+=40) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, this.canvas.height); ctx.stroke();
+        }
+
+        // Balas Jugador
+        ctx.fillStyle = '#FFD700';
+        this.bullets.forEach(b => ctx.fillRect(b.x, b.y, 4, 15));
+
+        // Obstáculos
+        ctx.fillStyle = '#0052FF';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#0052FF';
+        this.obstacles.forEach(ob => ctx.fillRect(ob.x, ob.y, ob.w, ob.h));
+
+        // Jugador
+        ctx.fillStyle = '#00f2ff';
+        ctx.shadowBlur = 20; ctx.shadowColor = '#00f2ff';
+        ctx.fillRect(this.player.x, this.player.y, this.player.w, this.player.h);
+
+        // Boss
+        if(this.bossActive) {
+            let bx = (this.canvas.width/2) + Math.sin(Date.now()/400) * (this.canvas.width/3);
+            ctx.fillStyle = '#FF2B2B';
+            ctx.shadowColor = '#FF2B2B';
+            ctx.fillRect(bx, 80, 100, 45);
+            // Cañones del boss
+            ctx.fillRect(bx+10, 125, 20, 15);
+            ctx.fillRect(bx+70, 125, 20, 15);
+            
+            ctx.fillStyle = '#FF2B2B';
+            this.enemyBullets.forEach(eb => {
+                ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.r, 0, Math.PI*2); ctx.fill();
+            });
+        }
+
+        // Partículas
+        this.particles.forEach(p => {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, 3, 3);
+        });
+
+        ctx.restore();
+    },
+
+    gameOver() {
+        this.active = false;
+        if(this.score > this.hiScore) localStorage.setItem('mq_hi_score', this.score);
+        this.shake = 30;
+        setTimeout(() => location.reload(), 1000);
+    },
+
+    loop() {
+        this.update();
+        this.draw();
+        if(this.active) requestAnimationFrame(() => this.loop());
+    }
+};
+</script>
+</body>
+</html>

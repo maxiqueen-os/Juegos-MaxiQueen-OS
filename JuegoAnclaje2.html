@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen OS - Estabilización Neural</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700;800&display=swap');
+
+        :root {
+            --bg: #050505;
+            --mq-gold: #facc15;
+            --mq-cyan: #06b6d4;
+            --mq-red: #ef4444;
+            --noise: 1; /* Nivel de ansiedad inicial */
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(250, 204, 21, 0.2);
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+        }
+
+        /* Ruido Visual (Estática Cyberpunk) */
+        #noise {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(250, 204, 21, 0.05),
+                rgba(250, 204, 21, 0.05) 1px,
+                transparent 2px,
+                transparent 4px
+            );
+            opacity: calc(var(--noise) * 0.8);
+            mix-blend-mode: screen;
+            z-index: 1;
+            transition: opacity 2s ease;
+        }
+
+        /* Efecto de Glitch de fondo basado en el ruido */
+        .glitch-bg {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, calc(var(--noise) * 0.15)), transparent 60%);
+            z-index: 0;
+            transition: background 2s ease;
+        }
+
+        /* Núcleo de Respiración */
+        #breathing-core {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--mq-cyan) 0%, transparent 70%);
+            border: 2px solid var(--mq-cyan);
+            margin: 40px auto;
+            transform: scale(1);
+            transition: transform 2s ease-in-out, opacity 0.5s ease, box-shadow 2s ease-in-out;
+            display: none;
+            box-shadow: 0 0 20px var(--mq-cyan), inset 0 0 20px var(--mq-cyan);
+            position: relative;
+        }
+
+        #breathing-core::after {
+            content: '';
+            position: absolute;
+            inset: 20px;
+            border-radius: 50%;
+            border: 1px dashed rgba(255,255,255,0.5);
+            animation: spin 10s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Puntos de Anclaje (Nodos) */
+        .dot {
+            width: 50px;
+            height: 50px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid var(--mq-red);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            cursor: crosshair;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            animation: pulse-dot 1.5s infinite alternate;
+            transition: transform 0.1s;
+        }
+
+        .dot:active { transform: scale(0.8); }
+
+        .dot::before {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--mq-red);
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-dot {
+            from { box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+            to { box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); }
+        }
+
+        /* UI Elements */
+        .btn-system {
+            background: var(--mq-gold);
+            color: black;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+        .btn-system:hover {
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .meter-container {
+            width: 100%;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: var(--mq-red);
+            width: 100%;
+            transition: width 1s ease, background-color 1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="noise"></div>
+    <div class="glitch-bg"></div>
+
+    <div id="wrap" class="glass-panel p-8 md:p-12 rounded-3xl max-w-lg w-full text-center relative">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-black italic text-yellow-400 mb-1">PROTOCOLO <span class="text-white">ANCLAJE</span></h1>
+            <p class="text-[10px] text-zinc-500 uppercase tracking-[0.3em]">Estabilización Neural del Operador</p>
+        </div>
+
+        <!-- Indicador de Estrés -->
+        <div id="stress-monitor" class="mb-8">
+            <div class="flex justify-between text-[10px] font-bold text-zinc-400 mb-2">
+                <span>NIVEL DE SOBRECARGA</span>
+                <span id="anxiety-value" class="text-red-400">100%</span>
+            </div>
+            <div class="meter-container">
+                <div id="anxiety-meter" class="meter-fill"></div>
+            </div>
+        </div>
+
+        <!-- Botón de Inicio -->
+        <button id="startBtn" class="btn-system w-full py-4 rounded-xl text-sm mb-4">
+            <i class="fas fa-exclamation-triangle mr-2"></i> Iniciar Calibración
+        </button>
+        
+        <p id="hint" class="text-xs text-zinc-400 leading-relaxed">
+            Detectando estrés cognitivo. Haz clic para sincronizar tu respiración con el núcleo del sistema y recalibrar tus sentidos.
+        </p>
+
+        <!-- Elementos Interactivos -->
+        <div id="breathing-core"></div>
+        <div id="phaseLabel" class="text-lg font-bold text-cyan-400 mt-6 tracking-widest hidden uppercase"></div>
+        <p id="subPhaseLabel" class="text-[10px] text-zinc-500 mt-2 tracking-widest hidden uppercase"></p>
+
+    </div>
+
+    <script>
+        // Estado del sistema
+        const state = {
+            phase: "idle", // idle | breathe | dots | done
+            anxiety: 100,
+            intervalId: null,
+            timeoutId: null,
+            cycle: 0,
+            dotsLeft: 0,
+            lastDotClickTs: 0,
+        };
+
+        const ui = {
+            startBtn: document.getElementById("startBtn"),
+            hint: document.getElementById("hint"),
+            core: document.getElementById("breathing-core"),
+            phaseLabel: document.getElementById("phaseLabel"),
+            subPhaseLabel: document.getElementById("subPhaseLabel"),
+            anxietyMeter: document.getElementById("anxiety-meter"),
+            anxietyValue: document.getElementById("anxiety-value")
+        };
+
+        function setNoiseAndStress(value) {
+            // Asegurar que el valor esté entre 0 y 100
+            const v = Math.max(0, Math.min(100, value));
+            state.anxiety = v;
+            
+            // Actualizar variables CSS para el ruido visual
+            document.documentElement.style.setProperty("--noise", String(v / 100));
+            
+            // Actualizar la barra UI
+            ui.anxietyMeter.style.width = `${v}%`;
+            ui.anxietyValue.textContent = `${Math.floor(v)}%`;
+            
+            // Cambiar el color del texto/barra según el nivel
+            if(v > 70) {
+                ui.anxietyMeter.style.background = "var(--mq-red)";
+                ui.anxietyValue.className = "text-red-400";
+            } else if (v > 30) {
+                ui.anxietyMeter.style.background = "var(--mq-gold)";
+                ui.anxietyValue.className = "text-yellow-400";
+            } else {
+                ui.anxietyMeter.style.background = "var(--mq-cyan)";
+                ui.anxietyValue.className = "text-cyan-400";
+            }
+        }
+
+        function setPhaseLabels(main, sub = "") {
+            ui.phaseLabel.textContent = main;
+            ui.phaseLabel.style.display = main ? "block" : "none";
+            
+            ui.subPhaseLabel.textContent = sub;
+            ui.subPhaseLabel.style.display = sub ? "block" : "none";
+        }
+
+        function cleanupTimers() {
+            if(state.intervalId) { clearInterval(state.intervalId); state.intervalId = null; }
+            if(state.timeoutId) { clearTimeout(state.timeoutId); state.timeoutId = null; }
+        }
+
+        function resetScene() {
+            cleanupTimers();
+            document.querySelectorAll(".dot").forEach(d => d.remove());
+            state.phase = "idle";
+            state.cycle = 0;
+            state.dotsLeft = 0;
+            state.lastDotClickTs = 0;
+
+            ui.startBtn.style.display = "block";
+            ui.hint.style.display = "block";
+            ui.core.style.display = "none";
+            
+            setPhaseLabels("");
+            setNoiseAndStress(100);
+            
+            ui.startBtn.innerHTML = `<i class="fas fa-redo mr-2"></i> REINICIAR PROTOCOLO`;
+        }
+
+        function start() {
+            cleanupTimers();
+            document.querySelectorAll(".dot").forEach(d => d.remove());
+            
+            setNoiseAndStress(100);
+            state.cycle = 0;
+            
+            ui.startBtn.style.display = "none";
+            ui.hint.style.display = "none";
+            
+            startBreathing();
+        }
+
+        function startBreathing() {
+            state.phase = "breathe";
+            ui.core.style.display = "block";
+            setPhaseLabels("Sincronizando...", "Sigue el pulso del núcleo");
+
+            let grow = true;
+            
+            // Inmediatamente ejecuta el primer paso visual
+            toggleBreath(grow);
+
+            state.intervalId = setInterval(() => {
+                grow = !grow;
+                toggleBreath(grow);
+
+                // Cada “ciclo” (2s) baja un poco la ansiedad (de 100 a 60)
+                state.cycle += 1;
+                setNoiseAndStress(state.anxiety - 5);
+
+                // Tras ~12s (6 ciclos) pasamos a reconexión táctil (dots)
+                if(state.cycle >= 6) {
+                    cleanupTimers();
+                    setTimeout(startDots, 1000);
+                }
+            }, 2000);
+        }
+
+        function toggleBreath(isGrowing) {
+            if (isGrowing) {
+                ui.core.style.transform = "scale(1.8)";
+                ui.core.style.boxShadow = "0 0 50px var(--mq-cyan), inset 0 0 30px var(--mq-cyan)";
+                setPhaseLabels("INHALA", "Absorbe oxígeno");
+            } else {
+                ui.core.style.transform = "scale(1)";
+                ui.core.style.boxShadow = "0 0 10px var(--mq-cyan), inset 0 0 10px var(--mq-cyan)";
+                setPhaseLabels("EXHALA", "Libera la tensión");
+            }
+        }
+
+        function startDots() {
+            state.phase = "dots";
+            ui.core.style.display = "none";
+            setPhaseLabels("INTERCEPTA NODOS", "Toca los puntos rojos a tu propio ritmo. Sin prisa.");
+
+            spawnDots(5);
+        }
+
+        function spawnDots(n) {
+            state.dotsLeft = n;
+            for(let i = 0; i < n; i++) {
+                const dot = document.createElement("div");
+                dot.className = "dot";
+
+                // Limitar a zona visible segura
+                const top = Math.random() * 70 + 15; // 15..85vh
+                const left = Math.random() * 70 + 15; // 15..85vw
+                dot.style.top = top + "vh";
+                dot.style.left = left + "vw";
+
+                dot.onclick = () => {
+                    const now = Date.now();
+                    const dt = state.lastDotClickTs ? (now - state.lastDotClickTs) : 9999;
+                    state.lastDotClickTs = now;
+                    
+                    // Penalización si hace clic de forma compulsiva/ansiosa (< 300ms)
+                    if(dt < 300) {
+                        setNoiseAndStress(state.anxiety + 10);
+                        ui.subPhaseLabel.textContent = "CALMA. NO HAY PRISA.";
+                        ui.subPhaseLabel.style.color = "var(--mq-red)";
+                        setTimeout(() => { ui.subPhaseLabel.style.color = ""; }, 1000);
+                    } else {
+                        // Recompensa normal
+                        setNoiseAndStress(state.anxiety - 15);
+                    }
+
+                    // Efecto visual al destruir el nodo
+                    dot.style.transform = "scale(0)";
+                    dot.style.opacity = "0";
+                    
+                    setTimeout(() => {
+                        dot.remove();
+                        state.dotsLeft -= 1;
+
+                        if(state.dotsLeft <= 0) {
+                            finish();
+                        }
+                    }, 200);
+                };
+
+                document.body.appendChild(dot);
+            }
+        }
+
+        function finish() {
+            state.phase = "done";
+            setNoiseAndStress(0);
+            
+            setPhaseLabels("SISTEMA ESTABILIZADO", "El operador está listo para continuar.");
+            ui.phaseLabel.style.color = "var(--mq-gold)";
+            
+            // Mostrar botón para volver al menú de MaxiQueenOS
+            setTimeout(() => {
+                ui.startBtn.style.display = "block";
+                ui.startBtn.innerHTML = `<i class="fas fa-check mr-2"></i> CERRAR PROTOCOLO`;
+                ui.startBtn.onclick = () => {
+                    // Aquí podrías redirigir al index de MaxiQueenOS
+                    // window.location.href = "index.html";
+                    resetScene();
+                };
+            }, 1500);
+        }
+
+        ui.startBtn.addEventListener("click", start);
+        
+        // Estado inicial
+        ui.startBtn.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> INICIAR CALIBRACIÓN`;
+    </script>
+</body>
+</html>

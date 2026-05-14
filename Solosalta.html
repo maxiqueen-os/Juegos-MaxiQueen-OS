@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MaxiQueen OS - PRO Edition</title>
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ff;
+            --ui-bg: rgba(5, 15, 25, 0.9);
+            --scanline: rgba(18, 16, 16, 0.1);
+        }
+
+        body { 
+            margin: 0; background: #020508; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--neon-blue);
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.15);
+            overflow: hidden;
+        }
+
+        /* Efecto de líneas de escaneo (Retro-Futurista) */
+        #game-wrapper::after {
+            content: " ";
+            position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(var(--scanline) 50%, transparent 50%);
+            background-size: 100% 4px;
+            z-index: 10; pointer-events: none;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; cursor: none; }
+
+        /* HUD Superior */
+        .hud {
+            position: absolute; top: 20px; width: calc(100% - 40px);
+            display: flex; justify-content: space-between; padding: 0 20px;
+            z-index: 20; pointer-events: none;
+        }
+
+        .panel {
+            background: var(--ui-bg);
+            border-left: 4px solid var(--neon-pink);
+            padding: 10px 15px;
+            backdrop-filter: blur(5px);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 12px;
+        }
+
+        .energy-grid { display: flex; gap: 4px; margin-top: 5px; }
+        .cell { width: 20px; height: 8px; background: rgba(0, 242, 255, 0.2); border: 1px solid var(--neon-blue); transition: 0.3s; }
+        .cell.full { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
+
+        /* Menús */
+        .overlay {
+            position: absolute; inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; z-index: 30; text-align: center;
+        }
+
+        .btn-start {
+            margin-top: 20px;
+            padding: 15px 40px;
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 18px; font-weight: bold;
+            cursor: pointer; transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-start:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+
+        /* Controles Móviles */
+        #mobile-controls {
+            position: absolute; bottom: 30px; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 50px;
+            box-sizing: border-box; z-index: 40;
+        }
+
+        .ctrl-btn {
+            width: 80px; height: 80px;
+            background: rgba(0, 242, 255, 0.1);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px; color: var(--neon-blue);
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div class="hud">
+        <div class="panel">
+            <div style="color: var(--neon-pink)">SISTEMA: EN LÍNEA</div>
+            <div id="chips-count">DATOS: 0 / 5</div>
+        </div>
+        <div class="panel">
+            <div>ESTADO DE ENERGÍA</div>
+            <div class="energy-grid" id="health-grid">
+                <div class="cell full"></div>
+                <div class="cell full"></div>
+                <div class="cell full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menú de Inicio -->
+    <div id="menu-overlay" class="overlay">
+        <h1 style="font-size: 48px; margin: 0; text-shadow: 0 0 20px var(--neon-blue);">MAXIQUEEN OS</h1>
+        <p>RECOLECTA LOS NÚCLEOS DE DATOS Y EVITA LOS CENTINELAS</p>
+        <button class="btn-start" onclick="startGame()">INICIAR PROTOCOLO</button>
+    </div>
+
+    <!-- Pantalla de Fin -->
+    <div id="end-overlay" class="overlay hidden">
+        <h2 id="end-title" style="font-size: 40px;">MISIÓN CUMPLIDA</h2>
+        <p id="end-detail">TIEMPO DE EJECUCIÓN: --</p>
+        <button class="btn-start" onclick="location.reload()">REINICIAR SISTEMA</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="mobile-controls">
+        <div style="display: flex; gap: 15px;">
+            <div class="ctrl-btn" id="leftBtn">←</div>
+            <div class="ctrl-btn" id="rightBtn">→</div>
+        </div>
+        <div class="ctrl-btn" id="jumpBtn" style="width: 120px;">SALTAR</div>
+    </div>
+</div>
+
+<script>
+    /** @type {HTMLCanvasElement} */
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = 800;
+    canvas.height = 600;
+
+    // --- CONFIGURACIÓN Y ESTADOS ---
+    const STATE = { MENU: 0, PLAYING: 1, END: 2 };
+    let currentGameState = STATE.MENU;
+    let score = 0;
+    let health = 3;
+    let startTime;
+    let shakeAmount = 0;
+
+    // --- CLASES PROFESIONALES ---
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x; this.y = y;
+            this.size = Math.random() * 4 + 1;
+            this.speedX = (Math.random() - 0.5) * 8;
+            this.speedY = (Math.random() - 0.5) * 8;
+            this.color = color;
+            this.alpha = 1;
+        }
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.alpha -= 0.02;
+        }
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+            ctx.restore();
+        }
+    }
+
+    const player = {
+        x: 100, y: 500, w: 30, h: 40,
+        color: "#00f2ff",
+        velX: 0, velY: 0,
+        speed: 0.8, friction: 0.85, maxSpeed: 6,
+        jumpPower: -15, gravity: 0.7,
+        onGround: false,
+        particles: []
+    };
+
+    let chips = [];
+    let enemies = [];
+    let stars = Array.from({length: 100}, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        s: Math.random() * 2
+    }));
+
+    // --- LÓGICA DE ENTRADA ---
+    const keys = {};
+    window.onkeydown = (e) => keys[e.code] = true;
+    window.onkeyup = (e) => keys[e.code] = false;
+
+    // Soporte Táctil
+    const bindTouch = (id, key) => {
+        const btn = document.getElementById(id);
+        btn.ontouchstart = (e) => { e.preventDefault(); keys[key] = true; };
+        btn.ontouchend = () => keys[key] = false;
+    };
+    bindTouch("leftBtn", "ArrowLeft");
+    bindTouch("rightBtn", "ArrowRight");
+    bindTouch("jumpBtn", "Space");
+
+    // --- FUNCIONES CORE ---
+
+    function startGame() {
+        document.getElementById("menu-overlay").classList.add("hidden");
+        currentGameState = STATE.PLAYING;
+        startTime = Date.now();
+        initLevel();
+    }
+
+    function initLevel() {
+        score = 0; health = 3;
+        chips = Array.from({length: 5}, () => ({
+            x: 100 + Math.random() * 600,
+            y: 100 + Math.random() * 300,
+            collected: false
+        }));
+        enemies = [
+            { x: 300, y: 150, dir: 1, range: 150, base: 150 },
+            { x: 500, y: 400, dir: -1, range: 100, base: 400 }
+        ];
+    }
+
+    function takeDamage() {
+        health--;
+        shakeAmount = 15;
+        player.x = 100; player.y = 400;
+        const cells = document.querySelectorAll(".cell");
+        if(cells[health]) cells[health].classList.remove("full");
+        if(health <= 0) endGame("SISTEMA COMPROMETIDO");
+    }
+
+    function endGame(title) {
+        currentGameState = STATE.END;
+        const timeTaken = ((Date.now() - startTime) / 1000).toFixed(2);
+        document.getElementById("end-overlay").classList.remove("hidden");
+        document.getElementById("end-title").innerText = title;
+        document.getElementById("end-detail").innerText = `TIEMPO DE RESPUESTA: ${timeTaken}s`;
+    }
+
+    // --- BUCLE DE RENDERIZADO ---
+
+    function update() {
+        if(currentGameState !== STATE.PLAYING) return;
+
+        // Movimiento Jugador con Inercia
+        if (keys["ArrowLeft"]) player.velX -= player.speed;
+        if (keys["ArrowRight"]) player.velX += player.speed;
+        
+        player.velX *= player.friction;
+        player.x += player.velX;
+
+        // Salto y Gravedad
+        if (keys["Space"] && player.onGround) {
+            player.velY = player.jumpPower;
+            player.onGround = false;
+            for(let i=0; i<10; i++) player.particles.push(new Particle(player.x + 15, player.y + 40, player.color));
+        }
+
+        player.velY += player.gravity;
+        player.y += player.velY;
+
+        // Colisión Suelo
+        if (player.y + player.h > 530) {
+            player.y = 530 - player.h;
+            player.velY = 0;
+            player.onGround = true;
+        }
+
+        // Límites Laterales
+        if (player.x < 0) player.x = 0;
+        if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
+
+        // Colisión Chips
+        chips.forEach(c => {
+            if(!c.collected && Math.hypot(player.x + 15 - c.x, player.y + 20 - c.y) < 25) {
+                c.collected = true;
+                score++;
+                document.getElementById("chips-count").innerText = `DATOS: ${score} / 5`;
+                if(score >= 5) endGame("MISIÓN CUMPLIDA");
+            }
+        });
+
+        // Colisión Enemigos
+        enemies.forEach(en => {
+            en.y += 3 * en.dir;
+            if(Math.abs(en.y - en.base) > en.range) en.dir *= -1;
+            
+            if(Math.hypot(player.x + 15 - en.x, player.y + 20 - en.y) < 25) takeDamage();
+        });
+
+        // Actualizar Partículas
+        player.particles.forEach((p, i) => {
+            p.update();
+            if(p.alpha <= 0) player.particles.splice(i, 1);
+        });
+
+        if(shakeAmount > 0) shakeAmount *= 0.9;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        // Efecto Shake
+        if(shakeAmount > 1) {
+            ctx.translate((Math.random()-0.5)*shakeAmount, (Math.random()-0.5)*shakeAmount);
+        }
+
+        // Fondo Estelar
+        ctx.fillStyle = "white";
+        stars.forEach(s => ctx.fillRect(s.x, s.y, s.s, s.s));
+
+        // Dibujar Suelo
+        ctx.fillStyle = "#0a1929";
+        ctx.fillRect(0, 530, canvas.width, 70);
+        ctx.strokeStyle = "#00f2ff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 530, canvas.width, 2);
+
+        // Dibujar Chips (Neon Cubes)
+        chips.forEach(c => {
+            if(!c.collected) {
+                ctx.shadowBlur = 15; ctx.shadowColor = "yellow";
+                ctx.fillStyle = "gold";
+                ctx.fillRect(c.x-10, c.y-10, 20, 20);
+                ctx.strokeStyle = "white";
+                ctx.strokeRect(c.x-12, c.y-12, 24, 24);
+            }
+        });
+
+        // Dibujar Enemigos (Centinelas)
+        enemies.forEach(en => {
+            ctx.shadowBlur = 20; ctx.shadowColor = "red";
+            ctx.fillStyle = "#ff0055";
+            ctx.beginPath();
+            ctx.arc(en.x, en.y, 15, 0, Math.PI*2);
+            ctx.fill();
+            // Ojo del centinela
+            ctx.fillStyle = "white";
+            ctx.fillRect(en.x-5, en.y-2, 10, 4);
+        });
+
+        // Dibujar Partículas
+        player.particles.forEach(p => p.draw());
+
+        // Dibujar Jugador (Cyborg)
+        ctx.shadowBlur = 15; ctx.shadowColor = player.color;
+        ctx.fillStyle = player.color;
+        // Cuerpo
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+        // Visor
+        ctx.fillStyle = "white";
+        ctx.fillRect(player.x + 5, player.y + 8, player.w - 10, 5);
+
+        ctx.restore();
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+</script>
+</body>
+</html>

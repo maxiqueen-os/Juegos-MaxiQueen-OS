@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MAXIQUEEN OS — Builder OS IA 👑</title>
+
+  <!-- ================= META ================= -->
+  <meta name="description" content="MaxiQueen OS — Sistema operativo cognitivo para crear, vender y escalar sin fragmentación." />
+  <meta name="robots" content="index, follow" />
+
+  <!-- ================= ESTILOS ================= -->
+  <style>
+    :root {
+      --primary-glow: rgba(124, 58, 237, 0.5);
+      --accent: #7c3aed;
+      --bg-dark: #05070f;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #0b0f1a, var(--bg-dark));
+      color: #e5e7eb;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 2rem;
+    }
+
+    .center { text-align: center; }
+
+    /* Estilo de Tarjetas con Glassmorphism */
+    .card {
+      background: rgba(255,255,255,0.04);
+      border-radius: 20px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .glow { box-shadow: 0 0 40px var(--primary-glow); }
+
+    /* Botones Premium */
+    button {
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      border: none;
+      border-radius: 12px;
+      padding: 0.8rem 1.5rem;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px var(--primary-glow);
+    }
+
+    button.secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Chat UI */
+    .chat-wrapper {
+      max-width: 800px;
+      margin: 2rem auto;
+    }
+
+    .messages {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: 450px;
+      overflow-y: auto;
+      padding: 1rem;
+      mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+    }
+
+    .msg {
+      padding: 0.8rem 1.2rem;
+      border-radius: 18px;
+      max-width: 80%;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      animation: msgSlide 0.3s ease-out forwards;
+    }
+
+    @keyframes msgSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.07);
+      color: #f3f4f6;
+      border-bottom-left-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* Input Area */
+    .input-container {
+      display: flex;
+      gap: 10px;
+      padding: 1rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      margin-top: 10px;
+    }
+
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      outline: none;
+      font-size: 1rem;
+    }
+
+    /* Game Tray (Bandeja de Juegos) */
+    .game-tray {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+      display: none; 
+    }
+
+    .game-slot {
+      aspect-ratio: 1;
+      background: rgba(255,255,255,0.03);
+      border: 1px dashed rgba(255,255,255,0.2);
+      border-radius: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .game-slot:hover {
+      background: rgba(124,58,237,0.1);
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+
+    .game-slot.active {
+      border: 1px solid var(--accent);
+      background: linear-gradient(135deg, rgba(124,58,237,0.2), transparent);
+    }
+
+    /* Game View Container */
+    #game-container {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-dark);
+      z-index: 100;
+      border-radius: 20px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Utilitarios */
+    .badge {
+      background: rgba(124,58,237,0.2);
+      color: #c4b5fd;
+      padding: 4px 12px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      color: #9ca3af;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+    footer {
+      text-align: center;
+      padding: 3rem;
+      opacity: 0.6;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container center">
+    <div style="margin-bottom: 1rem;"><span class="badge">Builder OS IA v2.5</span></div>
+    <h1 style="font-size: 2.5rem; margin: 0; background: linear-gradient(to right, #fff, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">MAXIQUEEN OS</h1>
+    <p style="color: #9ca3af;">Sistema cognitivo para creadores sin fragmentación.</p>
+  </div>
+
+  <div class="chat-wrapper">
+    <div class="card glow" id="main-card">
+      <div class="status-bar">
+        <span id="sys-msg">● SISTEMA ACTIVO</span>
+        <span id="user-mode">MODO: ASISTENTE</span>
+      </div>
+
+      <!-- Contenedor de Ejecución de Juegos -->
+      <div id="game-container">
+          <div style="margin-bottom: 20px;">
+              <h3>Slot MQ-07: Ejecutando...</h3>
+          </div>
+          <div style="background: #1a1a2e; width: 80%; height: 60%; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--accent);">
+              <p style="text-align:center; padding: 20px;">Simulación de entorno segura activa.<br><small>(En producción, aquí se cargaría el iframe del juego)</small></p>
+          </div>
+          <button style="margin-top: 20px;" onclick="closeGame()">Cerrar Simulación</button>
+      </div>
+
+      <div class="messages" id="chat-messages">
+        <!-- Los mensajes se cargan aquí -->
+      </div>
+
+      <div id="quick-actions" style="display:flex; gap:8px; padding: 10px; flex-wrap: wrap;"></div>
+
+      <div class="input-container">
+        <input type="text" id="user-input" placeholder="Comando o pregunta..." autocomplete="off">
+        <button id="send-btn">Enviar</button>
+      </div>
+    </div>
+
+    <!-- Bandeja de Juegos Integrada -->
+    <div id="game-tray" class="game-tray">
+        <div class="game-slot active" onclick="loadGame('neon_runner')">
+            <span style="font-size: 2rem;">🏃</span>
+            <span style="font-size: 0.7rem; margin-top: 5px;">MQ-07</span>
+            <small>Neon Runner</small>
+        </div>
+        <div class="game-slot">
+            <span style="font-size: 2rem; opacity: 0.3;">🔒</span>
+            <span style="font-size: 0.7rem; margin-top: 5px;">MQ-08</span>
+            <small>Locked</small>
+        </div>
+        <div class="game-slot">
+            <span style="font-size: 2rem; opacity: 0.3;">🔒</span>
+            <span style="font-size: 0.7rem; margin-top: 5px;">MQ-09</span>
+            <small>Locked</small>
+        </div>
+        <div class="game-slot" onclick="toggleGames()">
+            <span style="font-size: 1rem;">✕</span>
+            <small>Cerrar</small>
+        </div>
+    </div>
+  </div>
+
+  <footer>
+    © 2024 MAXIQUEEN OS. <br>
+    <small>Diseñado para escalar ideas humanas.</small>
+  </footer>
+
+  <script>
+    // --- MOTORES DE LÓGICA ---
+    const chatBox = document.getElementById('chat-messages');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const quickActions = document.getElementById('quick-actions');
+    const gameTray = document.getElementById('game-tray');
+    const gameContainer = document.getElementById('game-container');
+
+    const Memory = {
+        score: 0,
+        stage: 'intro',
+        history: []
+    };
+
+    function addMessage(role, text) {
+        const div = document.createElement('div');
+        div.className = `msg ${role}`;
+        div.innerHTML = text;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        Memory.history.push({role, text});
+    }
+
+    function showActions(actions) {
+        quickActions.innerHTML = '';
+        actions.forEach(act => {
+            const btn = document.createElement('button');
+            btn.className = 'secondary';
+            btn.innerText = act.label;
+            btn.onclick = () => handleInput(act.value);
+            quickActions.appendChild(btn);
+        });
+    }
+
+    function toggleGames() {
+        const isVisible = gameTray.style.display === 'grid';
+        gameTray.style.display = isVisible ? 'none' : 'grid';
+        if(!isVisible) {
+            addMessage('bot', "Accediendo a la sub-red de entretenimiento **MQ-GAMES**. ¿Qué quieres probar?");
+        }
+    }
+
+    function loadGame(gameId) {
+        addMessage('bot', `Iniciando enlace con el Slot ${gameId.toUpperCase()}... <br><small>Preparando entorno virtualizado.</small>`);
+        
+        // Simulación de carga en lugar de redirección directa de Location
+        setTimeout(() => {
+            gameContainer.style.display = 'flex';
+        }, 1200);
+    }
+
+    function closeGame() {
+        gameContainer.style.display = 'none';
+        addMessage('bot', "Simulación finalizada. ¿En qué más puedo asistirte?");
+    }
+
+    async function handleInput(val) {
+        const text = val || userInput.value;
+        if(!text) return;
+        
+        userInput.value = '';
+        addMessage('user', text);
+
+        const input = text.toLowerCase();
+        
+        if(input.includes('juego') || input.includes('entretener') || input.includes('slots')) {
+            toggleGames();
+            return;
+        }
+
+        setTimeout(() => {
+            if(input.includes('ordenar')) {
+                addMessage('bot', "El orden es la base del escalado. He preparado el **Plan Starter** para estructurar tu idea. ¿Quieres ver los detalles?");
+                showActions([
+                    {label: "Sí, ver detalles", value: "detalles plan"},
+                    {label: "Quiero jugar algo", value: "slots"}
+                ]);
+            } else if(input.includes('detalles')) {
+                addMessage('bot', "El Plan Starter incluye: <br>• Auditoría de marca<br>• Estructura de ventas v1<br>• Acceso a la comunidad.");
+                showActions([{label: "Hablar por WhatsApp", value: "whatsapp"}]);
+            } else if(input.includes('whatsapp')) {
+                addMessage('bot', "Abriendo canal de comunicación humano... 👑");
+                // Prevenimos el error de Location si la URL fuera vacía, aquí usamos una válida
+                setTimeout(() => {
+                    window.open("https://wa.me/573016625921", "_blank");
+                }, 500);
+            } else {
+                addMessage('bot', "Entendido. Mi sistema está listo para ayudarte a crear. ¿Prefieres trabajar en tu negocio o tomar un descanso en los **Slots de Juegos**?");
+                showActions([
+                    {label: "Trabajar (Ordenar)", value: "ordenar"},
+                    {label: "Entretenimiento (Slots)", value: "slots"}
+                ]);
+            }
+        }, 800);
+    }
+
+    sendBtn.onclick = () => handleInput();
+    userInput.onkeydown = (e) => e.key === 'Enter' && handleInput();
+
+    window.onload = () => {
+        addMessage('bot', "Bienvenido a **MaxiQueen OS**. Soy tu copiloto cognitivo. <br><br>¿Hoy vamos a **Ordenar** tu negocio o prefieres explorar los nuevos **Slots de juegos**?");
+        showActions([
+            {label: "Configurar Negocio", value: "ordenar"},
+            {label: "Ver Juegos (Slots)", value: "slots"}
+        ]);
+    };
+  </script>
+</body>
+</html>

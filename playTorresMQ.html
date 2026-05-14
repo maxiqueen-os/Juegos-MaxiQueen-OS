@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEURAL NEXUS: GLOBAL OVERRIDE</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --neon-red: #ff003c;
+            --bg-dark: #050508;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- UI OVERLAYS --- */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: rgba(5, 5, 8, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            transition: opacity 0.5s;
+        }
+
+        .hidden { opacity: 0; pointer-events: none; }
+
+        .menu-card {
+            background: rgba(20, 20, 30, 0.9);
+            border: 2px solid var(--neon-blue);
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 30px var(--neon-blue);
+            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+            min-width: 400px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 15px 40px;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s;
+            display: block;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: var(--neon-blue);
+            color: black;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px; left: 20px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .stat-box {
+            background: rgba(0, 243, 255, 0.1);
+            border-left: 5px solid var(--neon-blue);
+            padding: 10px 20px;
+            margin-bottom: 10px;
+        }
+
+        #ability-bar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+            z-index: 60;
+        }
+
+        .ability {
+            width: 60px; height: 60px;
+            border: 2px solid #555;
+            background: rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 0.8rem;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .ability.ready { border-color: var(--neon-blue); color: var(--neon-blue); }
+        .ability .cooldown-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+            background: rgba(0, 243, 255, 0.3);
+        }
+
+        #minimap-container {
+            position: absolute;
+            bottom: 20px; right: 20px;
+            width: 200px; height: 200px;
+            border: 1px solid var(--neon-blue);
+            background: rgba(0,0,0,0.7);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="hud">
+        <div class="stat-box">NEXUS STATUS: <span id="hp-val">100%</span></div>
+        <div class="stat-box">ENERGY: <span id="energy-val">0</span></div>
+        <div class="stat-box">NODES CONTROLLED: <span id="node-count">1</span></div>
+    </div>
+
+    <div id="ability-bar">
+        <div class="ability" id="skill-1" title="EMP Blast (E)">EMP<div class="cooldown-overlay"></div></div>
+        <div class="ability" id="skill-2" title="Overclock (R)">OVC<div class="cooldown-overlay"></div></div>
+        <div class="ability" id="skill-3" title="Shield (Q)">SHD<div class="cooldown-overlay"></div></div>
+    </div>
+
+    <div id="minimap-container">
+        <canvas id="minimapCanvas" width="200" height="200"></canvas>
+    </div>
+
+    <canvas id="mainCanvas"></canvas>
+
+    <div id="main-menu" class="overlay">
+        <div class="menu-card">
+            <h1>NEURAL NEXUS</h1>
+            <p>CONQUISTA LA RED GLOBAL</p>
+            <button class="btn" onclick="game.start()">INICIAR PROTOCOLO</button>
+            <button class="btn" onclick="game.showStats()">ESTADÍSTICAS</button>
+        </div>
+    </div>
+
+    <div id="game-over" class="overlay hidden">
+        <div class="menu-card" style="border-color: var(--neon-red); box-shadow: 0 0 30px var(--neon-red);">
+            <h1 style="color: var(--neon-red);">CONEXIÓN PERDIDA</h1>
+            <p id="final-stats">Nodos capturados: 0</p>
+            <button class="btn" onclick="location.reload()">REINTENTAR</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * ARCHITECTURE: NEURAL NEXUS ENGINE
+ * Professional Game Development Pattern
+ */
+
+const CONFIG = {
+    NODE_TYPES: { NEUTRAL: 0, PLAYER: 1, ENEMY: 2 },
+    COLORS: { 0: '#555555', 1: '#00f3ff', 2: '#ff003c' },
+    PACKET_SPEED: 180,
+    ENERGY_GAIN: 1,
+    MAX_NODES: 15
+};
+
+// --- AUDIO SYSTEM (Web Audio API) ---
+class AudioManager {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    playSfx(freq, type = 'sine', duration = 0.1, volume = 0.1) {
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    }
+
+    playCapture() { this.playSfx(440, 'square', 0.2); this.playSfx(880, 'square', 0.3); }
+    playShoot() { this.playSfx(150, 'sawtooth', 0.1, 0.05); }
+    playExplosion() { this.playSfx(60, 'triangle', 0.5, 0.2); }
+}
+
+// --- PARTICLE SYSTEM ---
+class Particle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y;
+        this.color = color;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.decay = 0.02 + Math.random() * 0.02;
+    }
+    update(dt) {
+        this.x += this.vx * dt * 60;
+        this.y += this.vy * dt * 60;
+        this.life -= this.decay;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, 3, 3);
+        ctx.globalAlpha = 1;
+    }
+}
+
+// --- ENTITIES ---
+class Node {
+    constructor(id, x, y, owner = 0) {
+        this.id = id;
+        this.x = x; this.y = y;
+        this.owner = owner;
+        this.strength = owner === 0 ? 10 : 20;
+        this.maxStrength = 100;
+        this.radius = 30;
+        this.growthRate = 1.5; // Unidades por segundo
+        this.selected = false;
+        this.pulse = 0;
+    }
+
+    update(dt) {
+        if (this.owner !== CONFIG.NODE_TYPES.NEUTRAL) {
+            this.strength = Math.min(this.maxStrength, this.strength + this.growthRate * dt);
+        }
+        this.pulse += dt * 3;
+    }
+
+    draw(ctx) {
+        const color = CONFIG.COLORS[this.owner];
+        ctx.save();
+        
+        // Glow effect
+        ctx.shadowBlur = 15 + Math.sin(this.pulse) * 5;
+        ctx.shadowColor = color;
+        
+        // Main circle
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Fill based on strength
+        ctx.beginPath();
+        const fillRad = (this.strength / this.maxStrength) * this.radius;
+        ctx.arc(this.x, this.y, fillRad, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.3;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Label
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(Math.floor(this.strength), this.x, this.y + 5);
+
+        if (this.selected) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2);
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "#fff";
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+}
+
+class Packet {
+    constructor(fromNode, toNode, owner, amount) {
+        this.x = fromNode.x;
+        this.y = fromNode.y;
+        this.target = toNode;
+        this.owner = owner;
+        this.amount = amount;
+        this.color = CONFIG.COLORS[owner];
+        this.speed = CONFIG.PACKET_SPEED;
+        this.finished = false;
+    }
+
+    update(dt) {
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist < 5) {
+            this.arrive();
+            return;
+        }
+
+        this.x += (dx / dist) * this.speed * dt;
+        this.y += (dy / dist) * this.speed * dt;
+    }
+
+    arrive() {
+        this.finished = true;
+        if (this.target.owner === this.owner) {
+            this.target.strength += this.amount;
+        } else {
+            this.target.strength -= this.amount;
+            if (this.target.strength <= 0) {
+                this.target.owner = this.owner;
+                this.target.strength = Math.abs(this.target.strength);
+                game.audio.playCapture();
+                game.spawnParticles(this.target.x, this.target.y, this.color);
+                game.shake = 10;
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// --- GAME ENGINE ---
+class Engine {
+    constructor() {
+        this.canvas = document.getElementById('mainCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.audio = new AudioManager();
+        this.nodes = [];
+        this.packets = [];
+        this.particles = [];
+        this.selection = null;
+        this.shake = 0;
+        this.energy = 0;
+        this.lastTime = 0;
+        this.running = false;
+        
+        this.setupEvents();
+        window.addEventListener('resize', () => this.resize());
+        this.resize();
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    setupEvents() {
+        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'e') this.useAbility(1);
+            if (e.key === 'r') this.useAbility(2);
+            if (e.key === 'q') this.useAbility(3);
+        });
+    }
+
+    start() {
+        document.getElementById('main-menu').classList.add('hidden');
+        this.initLevel();
+        this.running = true;
+        this.lastTime = performance.now();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    initLevel() {
+        this.nodes = [];
+        this.packets = [];
+        // Generate nodes
+        const margin = 100;
+        // Player Base
+        this.nodes.push(new Node(0, margin, this.canvas.height/2, CONFIG.NODE_TYPES.PLAYER));
+        // Enemy Base
+        this.nodes.push(new Node(1, this.canvas.width - margin, this.canvas.height/2, CONFIG.NODE_TYPES.ENEMY));
+        
+        // Random Neutral Nodes
+        for(let i = 2; i < CONFIG.MAX_NODES; i++) {
+            let x, y, tooClose;
+            do {
+                tooClose = false;
+                x = margin + Math.random() * (this.canvas.width - margin * 2);
+                y = margin + Math.random() * (this.canvas.height - margin * 2);
+                for(let n of this.nodes) {
+                    if(Math.hypot(x-n.x, y-n.y) < 120) tooClose = true;
+                }
+            } while(tooClose);
+            this.nodes.push(new Node(i, x, y, CONFIG.NODE_TYPES.NEUTRAL));
+        }
+    }
+
+    handleClick(e) {
+        const x = e.clientX;
+        const y = e.clientY;
+        
+        let clickedNode = null;
+        for(let n of this.nodes) {
+            if(Math.hypot(x - n.x, y - n.y) < n.radius) {
+                clickedNode = n;
+                break;
+            }
+        }
+
+        if(clickedNode) {
+            if(clickedNode.owner === CONFIG.NODE_TYPES.PLAYER) {
+                if(this.selection) this.selection.selected = false;
+                this.selection = clickedNode;
+                clickedNode.selected = true;
+                this.audio.playSfx(600, 'sine', 0.05);
+            } else if(this.selection) {
+                // Send troops
+                this.sendPackets(this.selection, clickedNode);
+                this.selection.selected = false;
+                this.selection = null;
+            }
+        } else {
+            if(this.selection) this.selection.selected = false;
+            this.selection = null;
+        }
+    }
+
+    sendPackets(from, to) {
+        if(from.strength < 2) return;
+        const amount = Math.floor(from.strength / 2);
+        from.strength -= amount;
+        this.packets.push(new Packet(from, to, from.owner, amount));
+        this.audio.playShoot();
+    }
+
+    spawnParticles(x, y, color) {
+        for(let i=0; i<15; i++) this.particles.push(new Particle(x, y, color));
+    }
+
+    useAbility(id) {
+        // Simple placeholder for professional ability system
+        if(this.energy > 50) {
+            this.energy -= 50;
+            this.shake = 20;
+            this.audio.playExplosion();
+            // EMP logic: half all enemy strengths
+            if(id === 1) {
+                this.nodes.forEach(n => {
+                    if(n.owner === CONFIG.NODE_TYPES.ENEMY) n.strength /= 2;
+                });
+            }
+        }
+    }
+
+    enemyAI(dt) {
+        // Advanced AI Logic: Find weakest neighbor or player node
+        const enemyNodes = this.nodes.filter(n => n.owner === CONFIG.NODE_TYPES.ENEMY);
+        enemyNodes.forEach(en => {
+            if(en.strength > 40 && Math.random() < 0.01) {
+                const targets = this.nodes.filter(n => n.owner !== CONFIG.NODE_TYPES.ENEMY);
+                if(targets.length > 0) {
+                    targets.sort((a, b) => Math.hypot(en.x-a.x, en.y-a.y) - Math.hypot(en.x-b.x, en.y-b.y));
+                    this.sendPackets(en, targets[0]);
+                }
+            }
+        });
+    }
+
+    update(dt) {
+        this.nodes.forEach(n => n.update(dt));
+        this.packets.forEach((p, i) => {
+            p.update(dt);
+            if(p.finished) this.packets.splice(i, 1);
+        });
+        this.particles.forEach((p, i) => {
+            p.update(dt);
+            if(p.life <= 0) this.particles.splice(i, 1);
+        });
+
+        this.enemyAI(dt);
+        this.energy += CONFIG.ENERGY_GAIN * dt;
+        
+        if(this.shake > 0) this.shake *= 0.9;
+
+        // Update HUD
+        const playerNodes = this.nodes.filter(n => n.owner === CONFIG.NODE_TYPES.PLAYER);
+        document.getElementById('hp-val').innerText = playerNodes.length > 0 ? "ESTABLE" : "FALLO";
+        document.getElementById('energy-val').innerText = Math.floor(this.energy);
+        document.getElementById('node-count').innerText = playerNodes.length;
+
+        if(playerNodes.length === 0) this.gameOver();
+    }
+
+    gameOver() {
+        this.running = false;
+        document.getElementById('game-over').classList.remove('hidden');
+        document.getElementById('final-stats').innerText = `Nodos perdidos ante la IA. Conexión terminada.`;
+    }
+
+    loop(now) {
+        if(!this.running) return;
+        const dt = (now - this.lastTime) / 1000;
+        this.lastTime = now;
+
+        this.update(dt);
+        this.draw();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        ctx.fillStyle = "#050508";
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        ctx.save();
+        if(this.shake > 0) {
+            ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        }
+
+        // Draw Links
+        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        this.nodes.forEach(n1 => {
+            this.nodes.forEach(n2 => {
+                if(n1.id < n2.id && Math.hypot(n1.x-n2.x, n1.y-n2.y) < 300) {
+                    ctx.beginPath();
+                    ctx.moveTo(n1.x, n1.y);
+                    ctx.lineTo(n2.x, n2.y);
+                    ctx.stroke();
+                }
+            });
+        });
+
+        this.nodes.forEach(n => n.draw(ctx));
+        this.packets.forEach(p => p.draw(ctx));
+        this.particles.forEach(p => p.draw(ctx));
+
+        ctx.restore();
+    }
+}
+
+// Bootstrap
+const game = new Engine();
+</script>
+</body>
+</html>

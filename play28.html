@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS • MULTIVERSE WAR X (2026)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue: #0066ff; --yellow: #ffcc00; --red: #ff0033;
+            --dark: #020610; --glass: rgba(0, 102, 255, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Rajdhani', sans-serif; }
+        
+        body {
+            background: var(--dark); color: white; overflow: hidden;
+            height: 100vh; display: flex; flex-direction: column;
+            background-image: radial-gradient(circle at 50% 50%, #0a1a35 0%, #020610 100%);
+        }
+
+        /* NEON HUD */
+        #hud-top {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            padding: 15px; background: rgba(0,0,0,0.8);
+            border-bottom: 2px solid var(--blue); box-shadow: 0 5px 20px rgba(0,102,255,0.4);
+            z-index: 100;
+        }
+
+        .stat { text-align: center; border-right: 1px solid rgba(0,102,255,0.2); }
+        .stat:last-child { border: none; }
+        .stat label { font-size: 0.7rem; color: var(--blue); letter-spacing: 2px; font-weight: 700; text-transform: uppercase; }
+        .stat div { font-size: 1.4rem; font-weight: 900; font-family: 'Orbitron'; color: #fff; }
+        .stat .val-alt { color: var(--yellow); }
+
+        /* SCENE STAGE */
+        #stage {
+            flex-grow: 1; position: relative; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05); margin: 10px;
+            border-radius: 20px; background: #000;
+        }
+
+        /* 3D PERSPECTIVE GRID */
+        #floor {
+            position: absolute; width: 200%; height: 100%; top: 0; left: -50%;
+            background-image: 
+                linear-gradient(var(--glass) 2px, transparent 2px),
+                linear-gradient(90deg, var(--glass) 2px, transparent 2px);
+            background-size: 60px 60px;
+            transform: perspective(400px) rotateX(65deg) translateY(0);
+            animation: moveFloor 2s linear infinite;
+        }
+        @keyframes moveFloor {
+            0% { transform: perspective(400px) rotateX(65deg) translateY(0); }
+            100% { transform: perspective(400px) rotateX(65deg) translateY(60px); }
+        }
+
+        /* HERO & ENTITIES */
+        #hero {
+            position: absolute; bottom: 20%; left: 15%; font-size: 70px;
+            z-index: 50; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 0 15px var(--blue));
+        }
+
+        .enemy {
+            position: absolute; bottom: 20%; right: -100px; font-size: 65px;
+            z-index: 40; transition: all 0.5s ease;
+            filter: drop-shadow(0 0 10px var(--red));
+        }
+
+        /* DAMAGE INDICATORS */
+        .dmg-text {
+            position: absolute; color: var(--red); font-weight: 900; font-family: 'Orbitron';
+            animation: dmgUp 0.8s forwards; z-index: 200; pointer-events: none;
+        }
+        @keyframes dmgUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-100px) scale(2); opacity: 0; }
+        }
+
+        /* FX */
+        #fx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 60; }
+        .laser-beam {
+            position: absolute; height: 15px; background: linear-gradient(90deg, transparent, var(--yellow), #fff);
+            box-shadow: 0 0 30px var(--yellow); border-radius: 10px; z-index: 100;
+        }
+
+        /* CONTROL CONSOLE */
+        #console {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            padding: 15px; background: #000; border-top: 2px solid var(--blue);
+        }
+
+        .btn {
+            padding: 18px; border: none; border-radius: 12px; font-family: 'Orbitron';
+            font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+            transition: 0.1s; cursor: pointer; color: white;
+            font-size: 0.9rem;
+        }
+        .btn-blue { background: linear-gradient(45deg, #0044bb, var(--blue)); border-bottom: 4px solid #002266; }
+        .btn-red { background: linear-gradient(45deg, #bb0022, var(--red)); border-bottom: 4px solid #660011; }
+        .btn-gold { background: linear-gradient(45deg, #aa8800, var(--yellow)); border-bottom: 4px solid #554400; color: #000; }
+        .btn-dark { background: #1a1a1a; border-bottom: 4px solid #000; color: var(--yellow); }
+
+        .btn:active { transform: translateY(3px); border-bottom-width: 1px; }
+
+        #log-bar {
+            background: #000; color: var(--blue); padding: 5px 20px;
+            font-size: 0.8rem; border-top: 1px solid rgba(0,102,255,0.2);
+            font-family: 'Courier New', monospace;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="hud-top">
+    <div class="stat"><label>Sector</label><div id="lvl">01</div></div>
+    <div class="stat"><label>Núcleo HP</label><div id="hp" style="color: var(--red);">100%</div></div>
+    <div class="stat"><label>Energía</label><div id="en" class="val-alt">100</div></div>
+    <div class="stat"><label>Créditos</label><div id="pts">0</div></div>
+</div>
+
+<div id="log-bar">> SISTEMA CARGADO: ESPERANDO ÓRDENES...</div>
+
+<div id="stage">
+    <div id="floor"></div>
+    <div id="fx-layer"></div>
+    <div id="hero">🤖</div>
+</div>
+
+<div id="console">
+    <button class="btn btn-blue" onclick="Engine.move()">Explorar Sector ➡</button>
+    <button class="btn btn-red" id="btn-atk" onclick="Engine.attack()" disabled>Fuego de Cañón 💥</button>
+    <button class="btn btn-gold" id="btn-spec" onclick="Engine.special()" disabled>Ultra Nova ⚡</button>
+    <button class="btn btn-dark" onclick="Engine.repair()">Auto-Reparación 🛠️</button>
+</div>
+
+<script>
+    const Engine = {
+        hp: 100, en: 100, pts: 0, lvl: 1,
+        inCombat: false,
+        enemyPool: ['👾', '🛸', '🛰️', '👹', '🐲'],
+        currentEnemy: null,
+
+        init() {
+            this.updateUI();
+            this.log("MAXIQUEEN OS V.2026 ONLINE");
+            // Auto-regeneración de energía
+            setInterval(() => {
+                if(!this.inCombat && this.en < 100) { this.en++; this.updateUI(); }
+            }, 1000);
+        },
+
+        log(msg) { document.getElementById('log-bar').innerText = `> ${msg}`; },
+
+        updateUI() {
+            document.getElementById('hp').innerText = `${this.hp}%`;
+            document.getElementById('en').innerText = this.en;
+            document.getElementById('pts').innerText = this.pts;
+            document.getElementById('lvl').innerText = this.lvl < 10 ? `0${this.lvl}` : this.lvl;
+            
+            document.getElementById('btn-atk').disabled = !this.inCombat;
+            document.getElementById('btn-spec').disabled = !this.inCombat || this.en < 50;
+        },
+
+        move() {
+            if(this.inCombat) return;
+            this.log("AVANZANDO A TRAVÉS DEL MULTIVERSO...");
+            const hero = document.getElementById('hero');
+            hero.style.transform = "translateX(50px) skewX(-15deg)";
+            
+            setTimeout(() => {
+                hero.style.transform = "translateX(0) skewX(0)";
+                this.spawnEnemy();
+            }, 600);
+        },
+
+        spawnEnemy() {
+            this.inCombat = true;
+            const enemyIcon = this.lvl % 5 === 0 ? '💀' : this.enemyPool[Math.floor(Math.random()*this.enemyPool.length)];
+            const div = document.createElement('div');
+            div.className = 'enemy';
+            div.id = 'active-enemy';
+            div.innerHTML = enemyIcon;
+            if(this.lvl % 5 === 0) div.style.fontSize = "120px";
+            
+            document.getElementById('stage').appendChild(div);
+            setTimeout(() => div.style.right = '15%', 100);
+            
+            this.currentEnemy = {
+                hp: 100 + (this.lvl * 20),
+                maxHp: 100 + (this.lvl * 20)
+            };
+            
+            this.log("¡AMENAZA DETECTADA EN EL SECTOR!");
+            this.updateUI();
+            this.enemyAI();
+        },
+
+        enemyAI() {
+            if(!this.inCombat) return;
+            setTimeout(() => {
+                if(this.inCombat) {
+                    const dmg = 5 + Math.floor(this.lvl * 1.5);
+                    this.hp -= dmg;
+                    this.popDmg(document.getElementById('hero'), dmg);
+                    this.shake(document.getElementById('stage'));
+                    if(this.hp <= 0) this.gameOver();
+                    this.updateUI();
+                    this.enemyAI();
+                }
+            }, 2000);
+        },
+
+        attack() {
+            if(!this.inCombat || this.en < 5) return;
+            this.en -= 5;
+            this.createLaser();
+            const dmg = 20 + Math.floor(Math.random()*15);
+            this.damageEnemy(dmg);
+            this.updateUI();
+        },
+
+        special() {
+            if(!this.inCombat || this.en < 50) return;
+            this.en -= 50;
+            this.log("INICIANDO PROTOCOLO ULTRA NOVA...");
+            for(let i=0; i<5; i++) {
+                setTimeout(() => this.createLaser(true), i * 100);
+            }
+            this.damageEnemy(100 + (this.lvl * 5));
+            this.updateUI();
+        },
+
+        damageEnemy(amount) {
+            const el = document.getElementById('active-enemy');
+            this.currentEnemy.hp -= amount;
+            this.popDmg(el, amount);
+            el.style.transform = "scale(1.2) translateX(20px)";
+            setTimeout(() => el.style.transform = "scale(1)", 100);
+
+            if(this.currentEnemy.hp <= 0) {
+                this.victory();
+            }
+        },
+
+        victory() {
+            this.inCombat = false;
+            const el = document.getElementById('active-enemy');
+            el.style.transform = "scale(0) rotate(360deg)";
+            el.style.opacity = "0";
+            this.pts += 50 * this.lvl;
+            this.lvl++;
+            this.log(`SECTOR ASEGURADO. CRÉDITOS RECUPERADOS.`);
+            setTimeout(() => el.remove(), 500);
+            this.updateUI();
+        },
+
+        repair() {
+            if(this.pts >= 100 && this.hp < 100) {
+                this.pts -= 100;
+                this.hp = Math.min(100, this.hp + 30);
+                this.log("REPARANDO SISTEMAS CRÍTICOS...");
+                this.updateUI();
+            } else {
+                this.log("CRÉDITOS INSUFICIENTES PARA REPARACIÓN");
+            }
+        },
+
+        createLaser(isSpecial = false) {
+            const laser = document.createElement('div');
+            laser.className = 'laser-beam';
+            const hero = document.getElementById('hero');
+            laser.style.top = (hero.offsetTop + 40) + (isSpecial ? (Math.random()*60 - 30) : 0) + 'px';
+            laser.style.left = '20%';
+            laser.style.width = '0';
+            document.getElementById('fx-layer').appendChild(laser);
+            
+            setTimeout(() => {
+                laser.style.width = '60%';
+                setTimeout(() => laser.remove(), 200);
+            }, 10);
+        },
+
+        popDmg(target, val) {
+            const p = document.createElement('div');
+            p.className = 'dmg-text';
+            p.innerText = `-${val}`;
+            p.style.left = target.offsetLeft + 'px';
+            p.style.top = target.offsetTop + 'px';
+            document.getElementById('stage').appendChild(p);
+            setTimeout(() => p.remove(), 800);
+        },
+
+        shake(el) {
+            el.style.animation = "none";
+            setTimeout(() => el.style.animation = "shake 0.2s 3", 1);
+        },
+
+        gameOver() {
+            alert(`SISTEMA COLAPSADO EN SECTOR ${this.lvl}\nCréditos Totales: ${this.pts}`);
+            location.reload();
+        }
+    };
+
+    // Estilo de vibración extra
+    const style = document.createElement('style');
+    style.innerHTML = `@keyframes shake { 0%{left:0} 25%{left:5px} 50%{left:-5px} 75%{left:5px} 100%{left:0} }`;
+    document.head.appendChild(style);
+
+    window.onload = () => Engine.init();
+</script>
+</body>
+</html>

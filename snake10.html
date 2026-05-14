@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Neon Overdrive</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --neon-red: #ff3131;
+            --bg-color: #050505;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--bg-color);
+            margin: 0;
+            color: var(--neon-green);
+            font-family: 'Courier New', Courier, monospace;
+            flex-direction: column;
+            overflow: hidden;
+            text-transform: uppercase;
+        }
+        #ui-layer {
+            margin-bottom: 15px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        #scoreBoard {
+            font-size: 28px;
+            text-shadow: 0 0 10px var(--neon-green);
+        }
+        canvas {
+            border: 2px solid var(--neon-green);
+            background-color: #000;
+            box-shadow: 0 0 25px rgba(0, 255, 65, 0.2);
+            cursor: crosshair;
+        }
+        #restartBtn {
+            display: none;
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-family: inherit;
+            cursor: pointer;
+            background: transparent;
+            color: var(--neon-green);
+            border: 2px solid var(--neon-green);
+            transition: 0.3s;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+        #restartBtn:hover {
+            background: var(--neon-green);
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="scoreBoard">SYS_DATA: 00</div>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    
+    <button id="restartBtn" onclick="resetGame()">REBOOT_SYSTEM</button>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreBoard = document.getElementById("scoreBoard");
+        const restartBtn = document.getElementById("restartBtn");
+
+        const gridSize = 20; 
+        const tileCount = canvas.width / gridSize;
+        
+        let score, snake, food, d, gameSpeed, isGameOver, particles;
+
+        function initGame() {
+            snake = [{ x: 10 * gridSize, y: 10 * gridSize }];
+            score = 0;
+            d = null; 
+            gameSpeed = 100;
+            isGameOver = false;
+            particles = [];
+            scoreBoard.innerText = "SYS_DATA: 00";
+            restartBtn.style.display = "none";
+            placeFood();
+            runLoop();
+        }
+
+        function placeFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount) * gridSize,
+                y: Math.floor(Math.random() * tileCount) * gridSize
+            };
+            if (snake.some(seg => seg.x === food.x && seg.y === food.y)) placeFood();
+        }
+
+        // --- CONTROLES ---
+        document.addEventListener("keydown", (e) => {
+            if (e.keyCode == 37 && d != "RIGHT") d = "LEFT";
+            if (e.keyCode == 38 && d != "DOWN") d = "UP";
+            if (e.keyCode == 39 && d != "LEFT") d = "RIGHT";
+            if (e.keyCode == 40 && d != "UP") d = "DOWN";
+        });
+
+        // Soporte Click/Touch para girar la serpiente
+        canvas.addEventListener("mousedown", (e) => {
+            if (!d) { d = "UP"; return; }
+            const rect = canvas.getBoundingClientRect();
+            const head = snake[0];
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            if (d === "UP" || d === "DOWN") {
+                d = (clickX < head.x) ? "LEFT" : "RIGHT";
+            } else {
+                d = (clickY < head.y) ? "UP" : "DOWN";
+            }
+        });
+
+        function createParticles(x, y, color) {
+            for(let i=0; i<8; i++) {
+                particles.push({
+                    x: x + gridSize/2,
+                    y: y + gridSize/2,
+                    vx: (Math.random()-0.5)*5,
+                    vy: (Math.random()-0.5)*5,
+                    life: 20,
+                    color: color
+                });
+            }
+        }
+
+        function draw() {
+            // Fondo con rejilla Cyberpunk
+            ctx.fillStyle = "#050505";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = "#111";
+            for(let i=0; i<canvas.width; i+=gridSize) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke();
+            }
+
+            // Partículas
+            particles.forEach((p, index) => {
+                p.x += p.vx; p.y += p.vy; p.life--;
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 20;
+                ctx.fillRect(p.x, p.y, 3, 3);
+                if(p.life <= 0) particles.splice(index, 1);
+            });
+            ctx.globalAlpha = 1;
+
+            // Dibujar Comida (Neon Red)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "red";
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x + 2, food.y + 2, gridSize - 4, gridSize - 4);
+
+            // Dibujar Serpiente (Neon Green)
+            snake.forEach((seg, i) => {
+                ctx.shadowBlur = (i === 0) ? 20 : 10;
+                ctx.shadowColor = "#00ff41";
+                ctx.fillStyle = (i === 0) ? "#fff" : "#00ff41";
+                ctx.fillRect(seg.x + 1, seg.y + 1, gridSize - 2, gridSize - 2);
+            });
+            ctx.shadowBlur = 0;
+
+            if (isGameOver) return;
+
+            // Lógica de Movimiento
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if (d == "LEFT") snakeX -= gridSize;
+            if (d == "UP") snakeY -= gridSize;
+            if (d == "RIGHT") snakeX += gridSize;
+            if (d == "DOWN") snakeY += gridSize;
+
+            // Colisiones
+            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || 
+                snake.some((seg, i) => i !==0 && seg.x === snakeX && seg.y === snakeY)) {
+                endGame();
+                return;
+            }
+
+            let newHead = { x: snakeX, y: snakeY };
+
+            if (snakeX == food.x && snakeY == food.y) {
+                score += 10;
+                scoreBoard.innerText = "SYS_DATA: " + (score < 100 ? "0" + score : score);
+                createParticles(food.x, food.y, "#00ff41");
+                placeFood();
+                gameSpeed = Math.max(50, 100 - (score/5)); // Aumenta velocidad
+            } else {
+                if(d) snake.pop();
+            }
+
+            if(d) snake.unshift(newHead);
+        }
+
+        function endGame() {
+            isGameOver = true;
+            ctx.fillStyle = "rgba(0,0,0,0.7)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "red";
+            ctx.fillStyle = "white";
+            ctx.font = "bold 30px 'Courier New'";
+            ctx.textAlign = "center";
+            ctx.fillText("CRITICAL_FAILURE", canvas.width / 2, canvas.height / 2);
+            restartBtn.style.display = "block";
+        }
+
+        function runLoop() {
+            if (!isGameOver) {
+                draw();
+                setTimeout(runLoop, gameSpeed);
+            }
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>

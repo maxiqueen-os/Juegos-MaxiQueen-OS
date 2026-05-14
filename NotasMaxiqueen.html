@@ -1,0 +1,86 @@
+
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQ-OS // Lab Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #05070a; color: #d1d5db; }
+        .editor-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
+        .notion-input { background: transparent; border: none; outline: none; width: 100%; resize: none; }
+        .sidebar { border-right: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body class="min-h-screen flex text-sm">
+
+    <!-- Sidebar Estilo Notion -->
+    <aside class="w-64 sidebar p-6 hidden md:block">
+        <h2 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-6">Espacios de Trabajo</h2>
+        <nav class="space-y-2">
+            <div class="flex items-center gap-2 p-2 bg-white/5 rounded-lg text-white">
+                <span>📝</span> Notas de Lab
+            </div>
+            <div class="flex items-center gap-2 p-2 hover:bg-white/5 rounded-lg text-zinc-500 cursor-pointer transition">
+                <span>📅</span> Calendario Ventas
+            </div>
+            <div class="flex items-center gap-2 p-2 hover:bg-white/5 rounded-lg text-zinc-500 cursor-pointer transition">
+                <span>🚀</span> Roadmaps
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Editor -->
+    <main class="flex-1 p-8">
+        <div class="max-w-2xl mx-auto space-y-6">
+            <header class="flex justify-between items-center">
+                <span class="text-[10px] font-mono text-purple-400">STATUS: AUTO-SAVING</span>
+                <button onclick="saveNote()" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-full text-[10px] font-bold transition">
+                    GUARDAR EN NUBE
+                </button>
+            </header>
+
+            <div class="editor-card p-8 min-h-[70vh] shadow-2xl">
+                <input type="text" id="noteTitle" placeholder="Título de la nota..." 
+                    class="notion-input text-3xl font-bold text-white mb-6 placeholder:opacity-20">
+                
+                <textarea id="noteBody" placeholder="Escribe tus ideas aquí o usa '/' para comandos..." 
+                    class="notion-input min-h-[50vh] leading-relaxed text-zinc-400 placeholder:opacity-10"></textarea>
+            </div>
+
+            <div class="flex gap-4 opacity-30 text-[9px] uppercase tracking-widest">
+                <span>Última edición: <span id="lastEdit">Ahora</span></span>
+                <span>Almacenamiento: Firestore MQ</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Función simple de guardado
+        function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const body = document.getElementById('noteBody').value;
+            
+            if(!title) {
+                alert("Ponle un título a tu nota primero 👑");
+                return;
+            }
+
+            // Aquí conectaríamos con el mismo Firebase que usamos antes
+            console.log("Guardando en la nube de MaxiQueen OS:", {title, body});
+            
+            document.getElementById('lastEdit').innerText = new Date().toLocaleTimeString();
+            
+            // Efecto visual de guardado
+            const btn = document.querySelector('button');
+            btn.innerText = "¡GUARDADO! ✓";
+            btn.classList.replace('bg-purple-600', 'bg-green-600');
+            
+            setTimeout(() => {
+                btn.innerText = "GUARDAR EN NUBE";
+                btn.classList.replace('bg-green-600', 'bg-purple-600');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

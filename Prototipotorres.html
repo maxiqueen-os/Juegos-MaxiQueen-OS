@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defensa de Nodos - MaxiQueen</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e; /* Fondo oscuro, ideal para integraciones */
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background-color: #16213e;
+            border: 2px solid #0f3460;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h2>Control de Nodos</h2>
+        <p>Arrastra de tu nodo (Azul) a otro para enviar tropas.</p>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuración de colores (0: Neutral, 1: Jugador, 2: Enemigo)
+        const colors = {
+            0: '#aaaaaa', // Gris
+            1: '#4361ee', // Azul
+            2: '#e63946'  // Rojo
+        };
+
+        let nodes = [];
+        let particles = [];
+        let selectedNode = null;
+        let mouseX = 0;
+        let mouseY = 0;
+        let isDragging = false;
+
+        // Clase Nodo
+        class Node {
+            constructor(x, y, radius, owner, initialUnits) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.owner = owner;
+                this.units = initialUnits;
+                this.productionRate = owner === 0 ? 0 : 0.02; // Neutrales no producen
+            }
+
+            update() {
+                if (this.owner !== 0 && this.units < 100) {
+                    this.units += this.productionRate;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = colors[this.owner];
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Dibujar cantidad de tropas
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(Math.floor(this.units), this.x, this.y);
+            }
+        }
+
+        // Clase Partícula (Tropas en movimiento)
+        class Particle {
+            constructor(x, y, targetNode, owner) {
+                this.x = x;
+                this.y = y;
+                this.targetNode = targetNode;
+                this.owner = owner;
+                this.speed = 2;
+            }
+
+            update() {
+                const dx = this.targetNode.x - this.x;
+                const dy = this.targetNode.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < this.targetNode.radius) {
+                    // Colisión con el nodo objetivo
+                    if (this.targetNode.owner === this.owner) {
+                        this.targetNode.units++; // Reforzar
+                    } else {
+                        this.targetNode.units--; // Atacar
+                        if (this.targetNode.units < 0) {
+                            // Capturar nodo
+                            this.targetNode.owner = this.owner;
+                            this.targetNode.units = 1;
+                            this.targetNode.productionRate = 0.02;
+                        }
+                    }
+                    return false; // La partícula debe ser eliminada
+                }
+
+                // Mover hacia el objetivo
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+                return true; // La partícula sigue viva
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = colors[this.owner];
+                ctx.fill();
+            }
+        }
+
+        // Inicializar nivel
+        function initMap() {
+            nodes.push(new Node(100, 300, 40, 1, 25));  // Jugador
+            nodes.push(new Node(700, 300, 40, 2, 25));  // Enemigo
+            nodes.push(new Node(400, 150, 30, 0, 10));  // Neutral
+            nodes.push(new Node(400, 450, 30, 0, 10));  // Neutral
+            nodes.push(new Node(250, 300, 25, 0, 5));   // Neutral
+            nodes.push(new Node(550, 300, 25, 0, 5));   // Neutral
+        }
+
+        // Interacciones del mouse
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+
+            nodes.forEach(node => {
+                const dist = Math.hypot(mouseX - node.x, mouseY - node.y);
+                if (dist < node.radius && node.owner === 1) { // Solo seleccionar propios
+                    selectedNode = node;
+                    isDragging = true;
+                }
+            });
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging && selectedNode) {
+                let targetNode = null;
+                nodes.forEach(node => {
+                    const dist = Math.hypot(mouseX - node.x, mouseY - node.y);
+                    if (dist < node.radius && node !== selectedNode) {
+                        targetNode = node;
+                    }
+                });
+
+                if (targetNode) {
+                    // Enviar la mitad de las tropas
+                    const unitsToSend = Math.floor(selectedNode.units / 2);
+                    selectedNode.units -= unitsToSend;
+                    
+                    // Crear partículas con un pequeño retraso
+                    for (let i = 0; i < unitsToSend; i++) {
+                        setTimeout(() => {
+                            // Añadir algo de aleatoriedad a la salida para que no salgan en fila india perfecta
+                            const offsetX = (Math.random() - 0.5) * 20;
+                            const offsetY = (Math.random() - 0.5) * 20;
+                            particles.push(new Particle(selectedNode.x + offsetX, selectedNode.y + offsetY, targetNode, selectedNode.owner));
+                        }, i * 100); // 100ms entre cada tropa
+                    }
+                }
+            }
+            isDragging = false;
+            selectedNode = null;
+        });
+
+        // Lógica de IA simple para el enemigo
+        setInterval(() => {
+            const enemyNodes = nodes.filter(n => n.owner === 2);
+            enemyNodes.forEach(enemyNode => {
+                if (enemyNode.units > 20 && Math.random() > 0.5) {
+                    // Elegir un objetivo aleatorio que no sea suyo
+                    const targets = nodes.filter(n => n !== enemyNode && n.owner !== 2);
+                    if (targets.length > 0) {
+                        const target = targets[Math.floor(Math.random() * targets.length)];
+                        const unitsToSend = Math.floor(enemyNode.units / 2);
+                        enemyNode.units -= unitsToSend;
+
+                        for (let i = 0; i < unitsToSend; i++) {
+                            setTimeout(() => {
+                                const offsetX = (Math.random() - 0.5) * 20;
+                                const offsetY = (Math.random() - 0.5) * 20;
+                                particles.push(new Particle(enemyNode.x + offsetX, enemyNode.y + offsetY, target, enemyNode.owner));
+                            }, i * 100);
+                        }
+                    }
+                }
+            });
+        }, 3000); // La IA decide cada 3 segundos
+
+        // Bucle principal del juego
+        function gameLoop() {
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar línea de arrastre
+            if (isDragging && selectedNode) {
+                ctx.beginPath();
+                ctx.moveTo(selectedNode.x, selectedNode.y);
+                ctx.lineTo(mouseX, mouseY);
+                ctx.strokeStyle = 'rgba(67, 97, 238, 0.5)';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            // Actualizar y dibujar nodos
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            // Actualizar y dibujar partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const alive = particles[i].update();
+                particles[i].draw();
+                if (!alive) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Iniciar
+        initMap();
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxiQueen OS: Neural Dash</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { 
+            --neon: #00ffcc; 
+            --danger: #ff2a6d; 
+            --bg: #050505;
+            --gold: #ffcc00;
+        }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        
+        /* Contenedor con efecto scanline */
+        #game-container { 
+            position: relative; width: 400px; height: 650px; 
+            background: linear-gradient(180deg, #0a0a12 0%, #000 100%);
+            border: 2px solid var(--neon); border-radius: 5px; overflow: hidden; 
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.2);
+        }
+        #game-container::before {
+            content: " "; position: absolute; inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+
+        #player { 
+            position: absolute; bottom: 30px; width: 70px; height: 8px; 
+            background: var(--neon); box-shadow: 0 0 20px var(--neon); 
+            border-radius: 2px; transition: transform 0.1s;
+        }
+
+        .item { position: absolute; font-weight: 900; filter: drop-shadow(0 0 5px currentColor); z-index: 5; }
+        
+        #ui { 
+            position: absolute; top: 0; width: 100%; padding: 15px; 
+            background: rgba(0,255,204,0.1); display: flex; justify-content: space-between; 
+            box-sizing: border-box; border-bottom: 1px solid var(--neon);
+        }
+
+        #overlay { 
+            position: absolute; inset: 0; background: rgba(0,0,0,0.9); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 100; color: var(--neon);
+        }
+        
+        .stat-box { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; }
+        button { 
+            margin-top: 20px; padding: 12px 25px; background: transparent; 
+            border: 1px solid var(--neon); color: var(--neon); cursor: pointer;
+            font-family: inherit; font-weight: bold; text-transform: uppercase;
+        }
+        button:hover { background: var(--neon); color: black; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui">
+        <div class="stat-box">DATA: <span id="score">0</span></div>
+        <div class="stat-box" id="streak-ui">STREAK: 0</div>
+        <div id="lives">❤️❤️❤️</div>
+    </div>
+    <div id="player"></div>
+
+    <div id="overlay">
+        <h1 style="color: var(--danger)">SYSTEM OVERHEAT</h1>
+        <p>RE-SUBIENDO NÚCLEO A LA RED...</p>
+        <input type="text" id="username" placeholder="ID AGENTE" maxlength="10" style="background:transparent; border:1px solid var(--neon); color:white; padding:10px; text-align:center;">
+        <button onclick="saveScore()">ENVIAR A FIREBASE</button>
+        <div id="leaderboard" style="margin-top:20px; font-size: 12px; width: 80%"></div>
+        <button onclick="location.reload()">REINICIAR OS</button>
+    </div>
+</div>
+
+<script>
+    // USANDO TUS CREDENCIALES DETECTADAS
+    const firebaseConfig = {
+      apiKey: "AIzaSyDdwqmNnw8d5oKeEM1SmpYh0SJOO79OoMU",
+      authDomain: "maxiqueen-os-3982f.firebaseapp.com",
+      projectId: "maxiqueen-os-3982f",
+      storageBucket: "maxiqueen-os-3982f.appspot.com",
+      messagingSenderId: "39693674275",
+      appId: "1:39693674275:web:6d983fabd77440b5090e96",
+      databaseURL: "https://maxiqueen-os-3982f-default-rtdb.firebaseio.com/"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let score = 0, lives = 3, streak = 0, active = true;
+    const player = document.getElementById('player');
+    const container = document.getElementById('game-container');
+
+    // Control ultra-suave
+    const move = (e) => {
+        const rect = container.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const x = clientX - rect.left - 35;
+        player.style.left = Math.max(0, Math.min(x, 330)) + 'px';
+    };
+    container.addEventListener('mousemove', move);
+    container.addEventListener('touchmove', move);
+
+    function spawn() {
+        if(!active) return;
+        
+        const item = document.createElement('div');
+        const rand = Math.random();
+        
+        // Lógica Cognitiva: Enemigos, Puntos o Buffs
+        let type = 'data';
+        if(rand > 0.85) type = 'virus';
+        else if(rand > 0.80) type = 'buff';
+
+        item.className = 'item';
+        item.innerText = type === 'virus' ? '×' : (type === 'buff' ? '★' : (Math.random() > 0.5 ? '1' : '0'));
+        item.style.color = type === 'virus' ? 'var(--danger)' : (type === 'buff' ? 'var(--gold)' : 'var(--neon)');
+        item.style.fontSize = type === 'buff' ? '28px' : '22px';
+        item.style.left = Math.random() * 360 + 'px';
+        item.style.top = '-40px';
+        container.appendChild(item);
+
+        let speed = 4 + (score / 200); // Aceleración logarítmica
+        
+        let fall = setInterval(() => {
+            if(!active) { item.remove(); clearInterval(fall); return; }
+            let top = parseFloat(item.style.top) + speed;
+            item.style.top = top + 'px';
+
+            const pRect = player.getBoundingClientRect(), iRect = item.getBoundingClientRect();
+            
+            if (iRect.bottom >= pRect.top && iRect.top <= pRect.bottom && iRect.left < pRect.right && iRect.right > pRect.left) {
+                if(type === 'virus') {
+                    lives--;
+                    streak = 0;
+                    container.style.border = "2px solid var(--danger)";
+                    setTimeout(() => container.style.border = "2px solid var(--neon)", 200);
+                } else if(type === 'buff') {
+                    score += 50;
+                    streak += 5;
+                } else {
+                    score += (10 + streak);
+                    streak++;
+                }
+                
+                updateUI();
+                if(lives <= 0) gameOver();
+                item.remove(); clearInterval(fall);
+            } else if (top > 650) { 
+                item.remove(); clearInterval(fall); 
+            }
+        }, 16);
+
+        setTimeout(spawn, Math.max(200, 1000 - (score / 10)));
+    }
+
+    function updateUI() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('streak-ui').innerText = `STREAK: ${streak}`;
+        document.getElementById('lives').innerText = '❤️'.repeat(Math.max(0, lives));
+        if(streak > 10) document.getElementById('streak-ui').style.color = 'var(--gold)';
+        else document.getElementById('streak-ui').style.color = 'white';
+    }
+
+    function gameOver() {
+        active = false;
+        document.getElementById('overlay').style.display = 'flex';
+        loadScores();
+    }
+
+    function saveScore() {
+        const name = document.getElementById('username').value || "ANON_USER";
+        database.ref('maxiqueen_leaderboard').push({
+            agent: name,
+            score: score,
+            timestamp: Date.now()
+        }).then(() => {
+            alert("NÚCLEO SINCRONIZADO");
+            loadScores();
+        });
+    }
+
+    function loadScores() {
+        database.ref('maxiqueen_leaderboard').orderByChild('score').limitToLast(5).once('value', (snap) => {
+            let html = "<h3>TOP AGENTS</h3><hr>";
+            snap.forEach(child => {
+                const data = child.val();
+                html += `<div style="display:flex; justify-content:space-between"><span>${data.agent}</span><span>${data.score}</span></div>`;
+            });
+            document.getElementById('leaderboard').innerHTML = html;
+        });
+    }
+
+    spawn();
+</script>
+</body>
+</html>

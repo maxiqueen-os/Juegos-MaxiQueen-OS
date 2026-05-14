@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS • NEON PROTOCOL v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Colores jerárquicos de MaxiQueen OS (Gamificación = Rojo) */
+            --mq-red: #ef4444; 
+            --mq-blue: #06b6d4;
+            --mq-yellow: #facc15;
+            --dark: #050507;
+            --neon-pink: #ff0055;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; }
+        
+        body {
+            background: var(--dark); color: white; font-family: 'Orbitron', sans-serif;
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        /* HUD */
+        #hud {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0, 0, 0, 0.95); padding: 10px 20px;
+            border-bottom: 2px solid var(--mq-red); z-index: 100;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+        }
+        .stat-group { display: flex; gap: 20px; }
+        .stat { text-align: center; }
+        .label { font-size: 0.55rem; color: var(--mq-red); text-transform: uppercase; display: block; letter-spacing: 1px;}
+        .val { font-size: 1.2rem; font-weight: 900; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        .val-gold { color: var(--mq-yellow); }
+
+        /* Level Toast */
+        #level-toast {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%) scale(0.5);
+            background: rgba(239, 68, 68, 0.9); padding: 10px 30px; border-radius: 5px;
+            font-weight: 900; font-size: 1.5rem; letter-spacing: 2px;
+            opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none; z-index: 90;
+        }
+        #level-toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+        /* Escenario de Juego */
+        #game-container { flex-grow: 1; position: relative; overflow: hidden; background: #020305; }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* Controles Móviles Flotantes */
+        .touch-zone {
+            position: absolute; bottom: 0; height: 100%; width: 50%; z-index: 50;
+            display: flex; align-items: flex-end; padding: 30px; opacity: 0;
+        }
+        #left-zone { left: 0; justify-content: flex-start; }
+        #right-zone { right: 0; justify-content: flex-end; }
+
+        /* Efecto de Daño */
+        #glitch-overlay {
+            position: fixed; inset: 0; pointer-events: none;
+            background: rgba(255, 0, 0, 0); transition: background 0.1s; z-index: 60;
+        }
+        .hit { background: rgba(239, 68, 68, 0.4) !important; }
+
+        /* Terminal de Garaje (Tienda) */
+        #garage-modal {
+            position: fixed; inset: 0; background: rgba(5, 5, 7, 0.95); z-index: 200;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: #111; border: 1px solid var(--mq-red); padding: 30px;
+            border-radius: 10px; width: 90%; max-width: 400px;
+            box-shadow: 0 0 40px rgba(239, 68, 68, 0.2); text-align: center;
+        }
+        .btn {
+            background: transparent; border: 2px solid var(--mq-red); color: white;
+            padding: 12px; width: 100%; margin-top: 15px; font-family: 'Orbitron'; font-weight: 900;
+            cursor: pointer; text-transform: uppercase; transition: all 0.2s;
+        }
+        .btn:hover:not(:disabled) { background: var(--mq-red); color: black; }
+        .btn:disabled { border-color: #333; color: #555; cursor: not-allowed; }
+        .btn-play { border-color: var(--mq-blue); margin-top: 30px; }
+        .btn-play:hover { background: var(--mq-blue); color: black; }
+    </style>
+</head>
+<body>
+
+<div id="glitch-overlay"></div>
+<div id="level-toast">NIVEL 2</div>
+
+<div id="hud">
+    <div class="stat">
+        <span class="label">NIVEL</span>
+        <span id="lvl-val" class="val">1</span>
+    </div>
+    <div class="stat-group">
+        <div class="stat"><span class="label">BLINDAJE</span><span id="hp-val" class="val">100%</span></div>
+        <div class="stat"><span class="label">DISTANCIA</span><span id="dist-val" class="val">0m</span></div>
+        <div class="stat"><span class="label">CRÉDITOS</span><span id="coin-val" class="val val-gold">0</span></div>
+    </div>
+</div>
+
+<div id="game-container">
+    <canvas id="raceCanvas"></canvas>
+    <div id="left-zone" class="touch-zone"></div>
+    <div id="right-zone" class="touch-zone"></div>
+</div>
+
+<!-- Modal de Tienda / Game Over -->
+<div id="garage-modal">
+    <div class="modal-content">
+        <h2 style="color: var(--mq-red); margin-bottom: 5px; font-size: 1.5rem;">SISTEMA CAÍDO</h2>
+        <p style="font-size: 0.8rem; color: #888; margin-bottom: 20px;">NODO DE GAMIFICACIÓN • GARAGE</p>
+        
+        <div style="background: rgba(250, 204, 21, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+            <span class="label" style="color: var(--mq-yellow);">FONDO DEL SISTEMA</span>
+            <span id="bank-val" class="val val-gold" style="font-size: 1.5rem;">0</span>
+        </div>
+
+        <button id="btn-upg-hp" class="btn" onclick="Game.buyUpgrade('hp')">
+            MEJORAR BLINDAJE <br><span id="cost-hp" style="font-size: 0.7em; color: var(--mq-yellow);">Coste: 50</span>
+        </button>
+        <button id="btn-upg-mult" class="btn" onclick="Game.buyUpgrade('mult')">
+            MULT. CRÉDITOS <br><span id="cost-mult" style="font-size: 0.7em; color: var(--mq-yellow);">Coste: 100</span>
+        </button>
+
+        <button class="btn btn-play" onclick="Game.restart()">REINICIAR SECUENCIA</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('raceCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('glitch-overlay');
+    const toast = document.getElementById('level-toast');
+    const garage = document.getElementById('garage-modal');
+
+    // Persistencia de datos en el OS
+    const SAVE_KEY = 'maxiqueen_neon_protocol_data';
+    let db = JSON.parse(localStorage.getItem(SAVE_KEY)) || {
+        bank: 0,
+        upgrades: { hp: 0, mult: 0 }
+    };
+
+    function saveDB() { localStorage.setItem(SAVE_KEY, JSON.stringify(db)); }
+
+    const Game = {
+        // Stats base
+        baseHp: 100,
+        hp: 100,
+        coins: 0,
+        dist: 0,
+        level: 1,
+        
+        // Físicas
+        lane: 1,
+        laneTargetX: 0,
+        carX: 0,
+        baseSpeed: 8,
+        currentSpeed: 8,
+        active: false,
+        entities: [],
+        
+        // Visuales
+        roadColors: ['#06b6d4', '#a855f7', '#facc15', '#ef4444', '#fff'],
+
+        init() {
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            
+            // Controles Unificados (PC y Móvil)
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'a') this.move(-1);
+                if (e.key === 'ArrowRight' || e.key === 'd') this.move(1);
+            });
+            document.getElementById('left-zone').onpointerdown = (e) => { e.preventDefault(); this.move(-1); };
+            document.getElementById('right-zone').onpointerdown = (e) => { e.preventDefault(); this.move(1); };
+
+            this.updateGarageUI();
+            this.start();
+        },
+
+        start() {
+            // Aplicar mejoras compradas
+            this.baseHp = 100 + (db.upgrades.hp * 50);
+            this.hp = this.baseHp;
+            this.coins = 0;
+            this.dist = 0;
+            this.level = 1;
+            this.currentSpeed = this.baseSpeed;
+            this.entities = [];
+            this.active = true;
+            this.updateLanePosition();
+            this.carX = this.laneTargetX;
+            
+            garage.style.display = 'none';
+            this.spawnEntities();
+            requestAnimationFrame(() => this.loop());
+        },
+
+        resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            this.updateLanePosition();
+        },
+
+        updateLanePosition() {
+            const laneWidth = canvas.width / 3;
+            this.laneTargetX = (this.lane * laneWidth) + (laneWidth / 2);
+        },
+
+        move(dir) {
+            if (!this.active) return;
+            this.lane = Math.max(0, Math.min(2, this.lane + dir));
+            this.updateLanePosition();
+        },
+
+        spawnEntities() {
+            if (!this.active) return;
+            
+            // Dificultad basada en el nivel
+            const spawnRate = Math.max(300, 1000 - (this.level * 100));
+            const isEnemy = Math.random() > (0.4 - (this.level * 0.02)); // Más enemigos en niveles altos
+            
+            this.entities.push({
+                x: (Math.floor(Math.random() * 3) * (canvas.width / 3)) + (canvas.width / 6),
+                y: -100,
+                type: isEnemy ? 'enemy' : 'coin',
+                speed: this.currentSpeed * (isEnemy ? 0.8 : 1) // Las monedas van a la velocidad de la pista
+            });
+
+            setTimeout(() => this.spawnEntities(), spawnRate);
+        },
+
+        drawCar(x, y) {
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'var(--mq-blue)';
+            ctx.fillStyle = '#fff';
+            
+            // Diseño aerodinámico Tron-style
+            ctx.beginPath();
+            ctx.moveTo(x, y - 10);
+            ctx.lineTo(x + 15, y + 20);
+            ctx.lineTo(x + 20, y + 60);
+            ctx.lineTo(x - 20, y + 60);
+            ctx.lineTo(x - 15, y + 20);
+            ctx.closePath();
+            ctx.fill();
+
+            // Detalles Neón
+            ctx.fillStyle = 'var(--mq-blue)';
+            ctx.fillRect(x - 8, y + 15, 16, 25);
+            
+            // Propulsores
+            ctx.fillStyle = 'var(--mq-red)';
+            ctx.shadowColor = 'var(--mq-red)';
+            ctx.fillRect(x - 15, y + 60, 8, 15 + Math.random() * 10);
+            ctx.fillRect(x + 7, y + 60, 8, 15 + Math.random() * 10);
+
+            ctx.restore();
+        },
+
+        drawRoad() {
+            const color = this.roadColors[(this.level - 1) % this.roadColors.length];
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 2;
+            
+            ctx.setLineDash([40, 40]);
+            ctx.lineDashOffset = -this.dist % 80;
+            for (let i = 1; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * (canvas.width / 3), 0);
+                ctx.lineTo(i * (canvas.width / 3), canvas.height);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0;
+        },
+
+        checkLevelUp() {
+            const newLevel = Math.floor(this.dist / 1000) + 1;
+            if (newLevel > this.level) {
+                this.level = newLevel;
+                this.currentSpeed = this.baseSpeed + (this.level * 1.5);
+                
+                toast.innerText = `NIVEL ${this.level}`;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            }
+        },
+
+        loop() {
+            if (!this.active) return;
+            // Efecto de rastro (Motion Blur)
+            ctx.fillStyle = 'rgba(2, 3, 5, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            this.drawRoad();
+            this.dist += this.currentSpeed / 2;
+            this.checkLevelUp();
+
+            // Interpolación lineal del coche
+            this.carX += (this.laneTargetX - this.carX) * 0.2;
+            const carY = canvas.height - 180;
+            this.drawCar(this.carX, carY);
+
+            // Procesamiento de entidades
+            for (let i = this.entities.length - 1; i >= 0; i--) {
+                let ent = this.entities[i];
+                ent.y += ent.speed;
+
+                if (ent.type === 'enemy') {
+                    ctx.fillStyle = 'var(--neon-pink)';
+                    ctx.shadowBlur = 15; ctx.shadowColor = 'var(--neon-pink)';
+                    ctx.fillRect(ent.x - 20, ent.y, 40, 80); // Bloque enemigo
+                    
+                    // Colisión
+                    if (Math.abs(ent.x - this.carX) < 35 && Math.abs(ent.y - carY) < 70) {
+                        this.hp -= 34; // 3 golpes estándar para morir sin upgrades
+                        this.entities.splice(i, 1);
+                        this.screenShake();
+                        if (this.hp <= 0) this.gameOver();
+                    }
+                } else {
+                    ctx.fillStyle = 'var(--mq-yellow)';
+                    ctx.shadowBlur = 10; ctx.shadowColor = 'var(--mq-yellow)';
+                    ctx.beginPath();
+                    ctx.arc(ent.x, ent.y, 12, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Recolección
+                    if (Math.abs(ent.x - this.carX) < 40 && Math.abs(ent.y - carY) < 50) {
+                        const multiplier = 1 + (db.upgrades.mult * 0.5);
+                        this.coins += Math.floor(10 * multiplier);
+                        this.entities.splice(i, 1);
+                    }
+                }
+
+                if (ent.y > canvas.height + 100) this.entities.splice(i, 1);
+            }
+
+            this.updateHUD();
+            requestAnimationFrame(() => this.loop());
+        },
+
+        updateHUD() {
+            const hpPercent = Math.max(0, Math.floor((this.hp / this.baseHp) * 100));
+            document.getElementById('hp-val').innerText = hpPercent + '%';
+            document.getElementById('coin-val').innerText = this.coins;
+            document.getElementById('dist-val').innerText = Math.floor(this.dist) + 'm';
+            document.getElementById('lvl-val').innerText = this.level;
+            
+            // Color de daño en el HUD
+            document.getElementById('hp-val').style.color = hpPercent < 40 ? 'var(--mq-red)' : 'white';
+        },
+
+        screenShake() {
+            overlay.classList.add('hit');
+            setTimeout(() => overlay.classList.remove('hit'), 150);
+        },
+
+        gameOver() {
+            this.active = false;
+            this.hp = 0;
+            this.updateHUD();
+            
+            // Guardar créditos recolectados
+            db.bank += this.coins;
+            saveDB();
+            
+            this.updateGarageUI();
+            setTimeout(() => garage.style.display = 'flex', 500);
+        },
+
+        // --- SISTEMA DE TIENDA ---
+        getCost(type) {
+            if (type === 'hp') return 50 + (db.upgrades.hp * 75);
+            if (type === 'mult') return 100 + (db.upgrades.mult * 150);
+            return 999999;
+        },
+
+        buyUpgrade(type) {
+            const cost = this.getCost(type);
+            if (db.bank >= cost) {
+                db.bank -= cost;
+                db.upgrades[type]++;
+                saveDB();
+                this.updateGarageUI();
+            }
+        },
+
+        updateGarageUI() {
+            document.getElementById('bank-val').innerText = db.bank;
+            
+            const costHp = this.getCost('hp');
+            const btnHp = document.getElementById('btn-upg-hp');
+            document.getElementById('cost-hp').innerText = `COSTE: ${costHp} | NVL: ${db.upgrades.hp}`;
+            btnHp.disabled = db.bank < costHp;
+
+            const costMult = this.getCost('mult');
+            const btnMult = document.getElementById('btn-upg-mult');
+            document.getElementById('cost-mult').innerText = `COSTE: ${costMult} | NVL: ${db.upgrades.mult}`;
+            btnMult.disabled = db.bank < costMult;
+        },
+
+        restart() {
+            this.start();
+        }
+    };
+
+    window.onload = () => Game.init();
+</script>
+</body>
+</html>

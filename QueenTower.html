@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAXIQUEEN OS | Global Mastery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;600&display=swap');
+
+        :root {
+            --neon-purple: #8A2BE2;
+            --neon-green: #00FF9C;
+            --cyber-blue: #00D4FF;
+            --bg-black: #050507;
+            --panel-bg: rgba(15, 15, 20, 0.95);
+        }
+
+        body {
+            background: var(--bg-black);
+            color: #EAEAEA;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 255, 156, 0.05) 0%, transparent 40%);
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Escaneo de líneas tipo monitor antiguo */
+        body::after {
+            content: " ";
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            z-index: 9999;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .btn-cyber {
+            position: relative;
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 12px 30px;
+            text-transform: uppercase;
+            font-weight: 900;
+            letter-spacing: 2px;
+            overflow: hidden;
+            transition: 0.3s;
+            clip-path: polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%);
+        }
+
+        .btn-cyber:hover {
+            background: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 20px var(--neon-green);
+            transform: scale(1.05);
+        }
+
+        /* Queen Towers Grid */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--neon-purple);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            aspect-ratio: 1/1;
+            background: rgba(20, 20, 25, 0.8);
+            border: 1px solid rgba(138, 43, 226, 0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: 0.3s;
+        }
+
+        .cell:hover { border-color: var(--neon-purple); }
+
+        .tower {
+            width: 80%;
+            height: 80%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            font-size: 1.5rem;
+            transition: 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: spawn 0.3s ease-out;
+        }
+
+        @keyframes spawn { from { transform: scale(0); } to { transform: scale(1); } }
+
+        .tower-1 { background: #1a1a1a; color: #555; border: 1px solid #333; }
+        .tower-2 { background: #00332a; color: var(--neon-green); border: 1px solid var(--neon-green); box-shadow: 0 0 15px rgba(0,255,156,0.3); }
+        .tower-3 { background: #2a0a4a; color: #fff; border: 1px solid var(--neon-purple); box-shadow: 0 0 15px rgba(138,43,226,0.5); }
+        .tower-4 { background: #4a3a0a; color: #ffab00; border: 1px solid #ffab00; }
+        .tower-5 { background: #4a0a0a; color: #fff; border: 1px solid #f44336; animation: pulse-red 1.5s infinite; }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0px #f44336; transform: scale(1); }
+            50% { box-shadow: 0 0 20px #f44336; transform: scale(1.05); }
+            100% { box-shadow: 0 0 0px #f44336; transform: scale(1); }
+        }
+
+        .status-bar {
+            background: linear-gradient(90deg, rgba(138, 43, 226, 0.1), rgba(0, 255, 156, 0.1));
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Loader */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bar-loading {
+            width: 200px;
+            height: 2px;
+            background: #111;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .bar-progress {
+            position: absolute;
+            height: 100%;
+            width: 0%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- SPLASH LOADER -->
+    <div id="loader">
+        <div class="orbitron text-2xl font-black neon-green">👑 MAXIQUEEN OS</div>
+        <div class="bar-loading"><div id="progress" class="bar-progress"></div></div>
+        <div id="loadStatus" class="mono text-[10px] mt-4 text-zinc-600 uppercase tracking-widest">Iniciando Kernels...</div>
+    </div>
+
+    <!-- HEADER / NAV -->
+    <nav class="status-bar sticky top-0 z-50 backdrop-blur-md px-6 py-3 flex justify-between items-center">
+        <div class="orbitron font-black text-lg tracking-tighter">
+            <span class="text-zinc-500">MQ</span><span class="text-white">OS</span>
+        </div>
+        <div id="globalStats" class="hidden flex gap-6 text-[10px] mono font-bold">
+            <div class="flex flex-col">
+                <span class="text-zinc-500">ENERGÍA</span>
+                <span id="val-energia" class="text-cyber-blue">100%</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-zinc-500">RECURSOS</span>
+                <span id="val-recursos" class="text-neon-green">500</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-zinc-500">EXPERIENCIA</span>
+                <span id="val-xp" class="text-neon-purple">0000</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PANTALLA DE INICIO (HERO) -->
+    <section id="hero" class="min-h-[90vh] flex flex-col items-center justify-center p-6">
+        <div class="text-center mb-12">
+            <h1 class="orbitron text-5xl md:text-8xl font-black text-white leading-none">
+                DOMINIO<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-emerald-400">COGNITIVO</span>
+            </h1>
+            <p class="mono text-zinc-500 mt-6 tracking-[0.4em] uppercase text-xs">MaxiQueen OS | Private Intelligence Network</p>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-6 mb-20">
+            <button onclick="bootSystem()" class="btn-cyber">[ ACCEDER AL NÚCLEO ]</button>
+            <button class="border border-zinc-800 text-zinc-500 px-8 py-3 rounded-sm hover:text-white transition uppercase text-xs font-bold tracking-widest">Documentación</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full">
+            <div class="glass-panel p-6 border-t-2 border-neon-purple">
+                <h4 class="orbitron text-xs font-bold text-neon-purple mb-2">01. EVOLUCIÓN</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed">Fusión de activos digitales para generar valor de mercado superior.</p>
+            </div>
+            <div class="glass-panel p-6 border-t-2 border-neon-green">
+                <h4 class="orbitron text-xs font-bold text-neon-green mb-2">02. NEGOCIO REAL</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed">Arquitectura de monetización escalable bajo protocolo Queen.</p>
+            </div>
+            <div class="glass-panel p-6 border-t-2 border-cyber-blue">
+                <h4 class="orbitron text-xs font-bold text-cyber-blue mb-2">03. VENTA ELEGANTE</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed">Ingeniería de persuasión y posicionamiento premium en red.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- DASHBOARD PRINCIPAL -->
+    <section id="dashboard" class="hidden p-6 max-w-6xl mx-auto animate-fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Perfil / Sidebar -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass-panel p-6 text-center">
+                    <div class="w-20 h-20 bg-gradient-to-tr from-purple-600 to-emerald-500 rounded-full mx-auto mb-4 border-4 border-zinc-900 shadow-xl flex items-center justify-center text-3xl">
+                        👑
+                    </div>
+                    <h3 class="orbitron font-bold">OPERADOR_01</h3>
+                    <p class="text-[10px] mono text-emerald-500">NIVEL: MAXIQUEEN</p>
+                    <div class="mt-4 pt-4 border-t border-zinc-800 space-y-2">
+                        <div class="flex justify-between text-[10px] mono">
+                            <span class="text-zinc-500">ESTABILIDAD</span>
+                            <span>98%</span>
+                        </div>
+                        <div class="w-full bg-zinc-800 h-1">
+                            <div class="bg-emerald-500 h-full" style="width: 98%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <button class="w-full text-left p-4 glass-panel hover:bg-zinc-800 transition text-xs font-bold flex justify-between items-center">
+                        <span><i class="fas fa-file-invoice-dollar mr-3 text-neon-green"></i> NEGOCIO REAL</span>
+                        <i class="fas fa-chevron-right text-[10px] text-zinc-600"></i>
+                    </button>
+                    <button class="w-full text-left p-4 glass-panel hover:bg-zinc-800 transition text-xs font-bold flex justify-between items-center">
+                        <span><i class="fas fa-star mr-3 text-yellow-500"></i> VENTA ELEGANTE</span>
+                        <i class="fas fa-chevron-right text-[10px] text-zinc-600"></i>
+                    </button>
+                    <button onclick="irRanking()" class="w-full text-left p-4 glass-panel hover:bg-zinc-800 transition text-xs font-bold flex justify-between items-center">
+                        <span><i class="fas fa-globe mr-3 text-cyber-blue"></i> RED GLOBAL</span>
+                        <i class="fas fa-chevron-right text-[10px] text-zinc-600"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contenido Central -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Acceso a Queen Towers -->
+                    <div class="glass-panel p-8 relative overflow-hidden group cursor-pointer" onclick="irJuego()">
+                        <div class="absolute -right-10 -bottom-10 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fas fa-microchip text-9xl"></i>
+                        </div>
+                        <h4 class="orbitron text-lg font-bold mb-2">QUEEN TOWERS</h4>
+                        <p class="text-sm text-zinc-400 mb-6">Módulo de estabilización de activos mediante fusión táctica.</p>
+                        <span class="text-xs font-black text-emerald-400 tracking-widest uppercase">[ INICIAR PROTOCOLO ]</span>
+                    </div>
+
+                    <!-- Acceso a Flashcards -->
+                    <div class="glass-panel p-8 relative overflow-hidden group cursor-pointer" onclick="irTarjetas()">
+                        <div class="absolute -right-10 -bottom-10 opacity-10 group-hover:opacity-20 transition">
+                            <i class="fas fa-brain text-9xl"></i>
+                        </div>
+                        <h4 class="orbitron text-lg font-bold mb-2">NÚCLEO MENTAL</h4>
+                        <p class="text-sm text-zinc-400 mb-6">Entrenamiento de alta velocidad para toma de decisiones.</p>
+                        <span class="text-xs font-black text-neon-purple tracking-widest uppercase">[ ACTIVAR FLASHCARDS ]</span>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6">
+                    <h3 class="orbitron text-xs font-bold mb-4 flex items-center">
+                        <i class="fas fa-terminal mr-2 text-emerald-500"></i> LOG DEL SISTEMA
+                    </h3>
+                    <div id="consoleLog" class="mono text-[10px] space-y-1 h-32 overflow-y-auto text-zinc-500">
+                        <div>> [INFO] Maxiqueen OS v6.0 listo.</div>
+                        <div>> [INFO] Conexión satelital establecida...</div>
+                        <div>> [WARN] Se detectan fluctuaciones en el sector de Diagnóstico.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- JUEGO: QUEEN TOWERS -->
+    <section id="juego" class="hidden p-6 max-w-2xl mx-auto animate-fade-in">
+        <div class="flex justify-between items-center mb-8">
+            <button onclick="volver()" class="text-zinc-500 hover:text-white transition"><i class="fas fa-arrow-left mr-2"></i> ESCAPAR</button>
+            <h2 class="orbitron font-bold tracking-widest">SECTOR_QUEEN_TOWERS</h2>
+            <div class="w-10"></div>
+        </div>
+
+        <div id="board" class="mb-8 shadow-[0_0_50px_rgba(138,43,226,0.1)]"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button id="buyBtn" onclick="buyTower()" class="glass-panel p-6 flex flex-col items-center group">
+                <span class="text-[10px] mono text-zinc-500 mb-2">GENERAR UNIDAD</span>
+                <span class="orbitron text-xl font-bold text-emerald-400 group-hover:scale-110 transition">T-1 CORE</span>
+                <span class="mt-2 text-xs bg-emerald-500/10 px-3 py-1 rounded text-emerald-500 font-bold">COSTO: <span id="cost-label">10</span> R</span>
+            </button>
+            
+            <div class="glass-panel p-6 flex flex-col justify-center">
+                <div class="flex justify-between mb-4">
+                    <button onclick="decisionManual('optimizar')" class="flex-1 bg-neon-purple/20 hover:bg-neon-purple transition border border-neon-purple/50 p-3 rounded mr-2 text-[10px] font-bold">OPTIMIZAR (-30 R)</button>
+                    <button onclick="decisionManual('ignorar')" class="flex-1 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 transition p-3 rounded text-[10px] font-bold text-zinc-500">IGNORAR</button>
+                </div>
+                <p class="text-[9px] mono text-center text-zinc-600 uppercase">La optimización aumenta estabilidad mental.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- TARJETAS -->
+    <section id="tarjetas" class="hidden p-6 max-w-xl mx-auto text-center animate-fade-in">
+        <h2 class="orbitron font-bold text-xl mb-12 tracking-[0.5em] text-neon-purple">CORE_TRAINING</h2>
+        
+        <div id="cardContainer" class="glass-panel p-12 rounded-2xl mb-8 min-h-[300px] flex flex-col justify-center items-center relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent"></div>
+            <p id="cardFront" class="orbitron text-4xl font-bold text-white z-10"></p>
+            <p id="cardBack" class="hidden text-2xl text-emerald-400 mt-6 pt-6 border-t border-zinc-800 w-full z-10 font-bold uppercase"></p>
+        </div>
+
+        <div id="controlesTarjeta" class="space-y-4">
+            <button id="btnMostrar" onclick="mostrarRespuesta()" class="btn-cyber w-full">ANALIZAR RESPUESTA</button>
+            <div id="accionesTarjeta" class="hidden grid grid-cols-2 gap-4">
+                <button onclick="correcta()" class="bg-emerald-600/20 text-emerald-500 border border-emerald-500/50 p-5 rounded-lg font-bold hover:bg-emerald-500 hover:text-black transition uppercase text-xs">Aceptado</button>
+                <button onclick="incorrecta()" class="bg-red-900/20 text-red-500 border border-red-500/50 p-5 rounded-lg font-bold hover:bg-red-500 hover:text-black transition uppercase text-xs">Error</button>
+            </div>
+        </div>
+
+        <button onclick="volver()" class="mt-12 text-zinc-600 text-xs hover:text-zinc-400 transition mono tracking-widest underline decoration-zinc-800">CERRAR MÓDULO</button>
+    </section>
+
+    <!-- RANKING -->
+    <section id="ranking" class="hidden p-6 max-w-xl mx-auto animate-fade-in">
+        <h2 class="orbitron font-bold text-2xl mb-10 text-center text-cyber-blue tracking-widest">TOP_OPERATORS</h2>
+        <div class="glass-panel rounded-xl overflow-hidden">
+            <div class="flex justify-between p-5 bg-white/5 mono text-[10px] text-zinc-500 font-bold uppercase">
+                <span>Rango</span>
+                <span>Identidad</span>
+                <span>Dominio (XP)</span>
+            </div>
+            <div class="p-2 space-y-1">
+                <div class="flex justify-between items-center p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-emerald-400">
+                    <span class="orbitron text-xs">#01</span>
+                    <span class="font-black">MAXIQUEEN_CORE</span>
+                    <span class="mono">99,999</span>
+                </div>
+                <!-- Mock users -->
+                <div class="flex justify-between items-center p-4 text-zinc-400 text-xs">
+                    <span class="mono">#02</span>
+                    <span class="mono">X_VIP_ACCESS</span>
+                    <span class="mono">15,400</span>
+                </div>
+                <div class="flex justify-between items-center p-4 text-zinc-600 text-xs">
+                    <span class="mono">#03</span>
+                    <span class="mono">GUEST_7822</span>
+                    <span class="mono">1,200</span>
+                </div>
+            </div>
+        </div>
+        <button onclick="volver()" class="btn-cyber w-full mt-10">Volver</button>
+    </section>
+
+    <script>
+        // --- ESTADO ---
+        let state = {
+            energia: 100,
+            recursos: 500,
+            xp: 0,
+            costoTorre: 10,
+            grid: Array(16).fill(null),
+            cardIndex: 0
+        };
+
+        const cards = [
+            {front:"MEMORIA", back:"X-99-R"},
+            {front:"VENTA", back:"ELEGANCIA"},
+            {front:"VALOR", back:"PERCEPCIÓN"},
+            {front:"SISTEMA", back:"MAXIQUEEN"}
+        ];
+
+        // --- CARGA ---
+        window.onload = () => {
+            let progress = 0;
+            const bar = document.getElementById("progress");
+            const status = document.getElementById("loadStatus");
+            const statuses = ["Descifrando protocolos...", "Enlazando bases de datos...", "Cargando Queen Core...", "Listo."];
+
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if(progress > 100) progress = 100;
+                bar.style.width = progress + "%";
+                status.innerText = statuses[Math.floor(progress/30)] || "Listo.";
+
+                if(progress === 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById("loader").style.display = "none";
+                    }, 500);
+                }
+            }, 100);
+        };
+
+        // --- SISTEMA ---
+        function bootSystem() {
+            document.getElementById("hero").classList.add("hidden");
+            document.getElementById("dashboard").classList.remove("hidden");
+            document.getElementById("globalStats").classList.remove("hidden");
+            logSystem("Núcleo de Inteligencia Activado.");
+            actualizarUI();
+        }
+
+        function logSystem(msg) {
+            const log = document.getElementById("consoleLog");
+            const div = document.createElement("div");
+            div.innerText = `> [${new Date().toLocaleTimeString()}] ${msg}`;
+            log.prepend(div);
+        }
+
+        function ocultarTodo() {
+            document.querySelectorAll("section").forEach(s => s.classList.add("hidden"));
+        }
+
+        function volver() {
+            ocultarTodo();
+            document.getElementById("dashboard").classList.remove("hidden");
+        }
+
+        function irJuego() {
+            ocultarTodo();
+            document.getElementById("juego").classList.remove("hidden");
+            renderBoard();
+            logSystem("Iniciando Sector Queen Towers.");
+        }
+
+        function irTarjetas() {
+            ocultarTodo();
+            document.getElementById("tarjetas").classList.remove("hidden");
+            cargarTarjeta();
+            logSystem("Cargando Flashcards Cognitivas.");
+        }
+
+        function irRanking() {
+            ocultarTodo();
+            document.getElementById("ranking").classList.remove("hidden");
+        }
+
+        function actualizarUI() {
+            document.getElementById("val-energia").innerText = state.energia + "%";
+            document.getElementById("val-recursos").innerText = state.recursos;
+            document.getElementById("val-xp").innerText = String(state.xp).padStart(4, '0');
+            
+            const buyBtn = document.getElementById("buyBtn");
+            if(buyBtn) {
+                document.getElementById("cost-label").innerText = state.costoTorre;
+                if(state.recursos < state.costoTorre) buyBtn.style.opacity = "0.5";
+                else buyBtn.style.opacity = "1";
+            }
+        }
+
+        // --- QUEEN TOWERS ---
+        function renderBoard() {
+            const board = document.getElementById("board");
+            board.innerHTML = '';
+            state.grid.forEach((item, idx) => {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+                
+                if (item) {
+                    const tower = document.createElement("div");
+                    tower.className = `tower tower-${item.level}`;
+                    tower.innerHTML = getIcon(item.level);
+                    tower.draggable = true;
+                    tower.ondragstart = (e) => e.dataTransfer.setData("text", idx);
+                    cell.appendChild(tower);
+                }
+
+                cell.ondragover = (e) => e.preventDefault();
+                cell.ondrop = (e) => {
+                    const fromIdx = e.dataTransfer.getData("text");
+                    handleAction(parseInt(fromIdx), idx);
+                };
+                board.appendChild(cell);
+            });
+        }
+
+        function getIcon(level) {
+            const icons = ['', '⚡', '💎', '🛡️', '🔥', '👑'];
+            return icons[level];
+        }
+
+        function buyTower() {
+            const emptyIdx = state.grid.findIndex(v => v === null);
+            if (emptyIdx !== -1 && state.recursos >= state.costoTorre) {
+                state.recursos -= state.costoTorre;
+                state.grid[emptyIdx] = { level: 1 };
+                state.costoTorre = Math.floor(state.costoTorre * 1.15);
+                renderBoard();
+                actualizarUI();
+                logSystem("Unidad T-1 generada.");
+            }
+        }
+
+        function handleAction(from, to) {
+            if (from === to) return;
+            const source = state.grid[from];
+            const target = state.grid[to];
+
+            if (target && source.level === target.level && source.level < 5) {
+                state.grid[to] = { level: source.level + 1 };
+                state.grid[from] = null;
+                state.xp += source.level * 25;
+                logSystem(`Fusión Exitosa: Nivel ${source.level + 1}`);
+                renderBoard();
+            } else if (!target) {
+                state.grid[to] = state.grid[from];
+                state.grid[from] = null;
+                renderBoard();
+            }
+            actualizarUI();
+        }
+
+        function decisionManual(type) {
+            if (type === 'optimizar') {
+                if (state.recursos >= 30) {
+                    state.recursos -= 30;
+                    state.energia = Math.min(100, state.energia + 10);
+                    state.xp += 50;
+                    logSystem("Optimización de energía completada.");
+                }
+            } else {
+                state.energia -= 15;
+                logSystem("Sector ignorado. Pérdida de energía detectada.");
+            }
+            actualizarUI();
+        }
+
+        // --- FLASHCARDS ---
+        function cargarTarjeta() {
+            const c = cards[state.cardIndex];
+            document.getElementById("cardFront").innerText = c.front;
+            document.getElementById("cardBack").classList.add("hidden");
+            document.getElementById("btnMostrar").classList.remove("hidden");
+            document.getElementById("accionesTarjeta").classList.add("hidden");
+        }
+
+        function mostrarRespuesta() {
+            document.getElementById("cardBack").innerText = cards[state.cardIndex].back;
+            document.getElementById("cardBack").classList.remove("hidden");
+            document.getElementById("btnMostrar").classList.add("hidden");
+            document.getElementById("accionesTarjeta").classList.remove("hidden");
+        }
+
+        function correcta() {
+            state.xp += 100;
+            state.cardIndex = (state.cardIndex + 1) % cards.length;
+            cargarTarjeta();
+            actualizarUI();
+            logSystem("Respuesta validada. +100 XP");
+        }
+
+        function incorrecta() {
+            logSystem("Error de procesamiento. Repitiendo secuencia.");
+            cargarTarjeta();
+        }
+
+        // Pasivo: Generación de recursos por torres
+        setInterval(() => {
+            let gain = 0;
+            state.grid.forEach(t => { if(t) gain += t.level * 2 });
+            if (gain > 0) {
+                state.recursos += gain;
+                actualizarUI();
+            }
+        }, 3000);
+
+    </script>
+</body>
+</html>

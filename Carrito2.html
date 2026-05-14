@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MAXIQUEEN OS • NITRO RACER 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-yellow: #fff200;
+            --dark-space: #02050a;
+            --glass: rgba(0, 243, 255, 0.1);
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            touch-action: none; 
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--dark-space);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* HUD PREMIUM */
+        #hud {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            padding: 15px;
+            background: linear-gradient(to bottom, #000, rgba(0,0,0,0.8));
+            border-bottom: 2px solid var(--neon-blue);
+            box-shadow: 0 5px 20px rgba(0, 243, 255, 0.3);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .stat-label { font-size: 0.65rem; color: var(--neon-blue); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-val { font-size: 1.2rem; font-weight: 900; display: block; text-shadow: 0 0 10px var(--neon-blue); }
+
+        /* AREA DE JUEGO */
+        #game-stage {
+            flex-grow: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #0a1525 0%, #02050a 100%);
+            overflow: hidden;
+        }
+
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* CONTROLES MÓVILES */
+        #controls {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 15px;
+            padding: 20px;
+            background: #000;
+            border-top: 1px solid #1a1a1a;
+        }
+
+        .btn {
+            padding: 20px 10px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            color: white;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-move { 
+            background: var(--glass); 
+            border: 1px solid var(--neon-blue);
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
+        }
+        
+        .btn-repair { 
+            background: var(--neon-yellow); 
+            color: black; 
+            box-shadow: 0 0 15px rgba(255, 242, 0, 0.4);
+        }
+
+        .btn:active { transform: scale(0.92); filter: brightness(1.5); }
+
+        /* OVERLAY GAME OVER */
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <div><span class="stat-label">Velocidad</span><span id="speed-val" class="stat-val">0</span></div>
+    <div><span class="stat-label">Integridad</span><span id="hp-val" class="stat-val">100%</span></div>
+    <div><span class="stat-label">Créditos</span><span id="coin-val" class="stat-val">0</span></div>
+</div>
+
+<div id="game-stage">
+    <canvas id="roadCanvas"></canvas>
+    <div id="overlay">
+        <h1 style="color: var(--neon-pink); margin-bottom: 20px;">SISTEMA CRÍTICO</h1>
+        <button class="btn btn-repair" onclick="location.reload()" style="padding: 15px 30px;">REINICIAR PROTOCOLO</button>
+    </div>
+</div>
+
+<div id="controls">
+    <button class="btn btn-move" id="leftBtn">◀ IZQ</button>
+    <button class="btn btn-repair" id="repairBtn">🛠 REPARAR (50)</button>
+    <button class="btn btn-move" id="rightBtn">DER ▶</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('roadCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Paleta de colores para JS
+    const COLORS = {
+        blue: '#00f3ff',
+        pink: '#ff00ff',
+        yellow: '#fff200',
+        road: '#0a0f1a'
+    };
+
+    const Game = {
+        hp: 100,
+        coins: 0,
+        speed: 8,
+        lane: 1,
+        targetX: 0,
+        currentX: 0,
+        obstacles: [],
+        collectibles: [],
+        active: true,
+        roadOffset: 0,
+
+        init() {
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            
+            // Controles de teclado
+            window.addEventListener('keydown', (e) => {
+                if(e.key === 'ArrowLeft') this.move(-1);
+                if(e.key === 'ArrowRight') this.move(1);
+                if(e.key === 'r' || e.key === 'R') this.repair();
+            });
+
+            // Controles táctiles
+            document.getElementById('leftBtn').onpointerdown = () => this.move(-1);
+            document.getElementById('rightBtn').onpointerdown = () => this.move(1);
+            document.getElementById('repairBtn').onpointerdown = () => this.repair();
+
+            this.targetX = canvas.width / 2;
+            this.currentX = this.targetX;
+            
+            this.spawnManager();
+            this.loop();
+        },
+
+        resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            this.move(0); // Recalcular posición
+        },
+
+        move(dir) {
+            this.lane = Math.max(0, Math.min(2, this.lane + dir));
+            const laneWidth = canvas.width / 3;
+            this.targetX = (this.lane * laneWidth) + (laneWidth / 2);
+        },
+
+        repair() {
+            if(this.coins >= 50 && this.hp < 100) {
+                this.coins -= 50;
+                this.hp = Math.min(100, this.hp + 40);
+                if (navigator.vibrate) navigator.vibrate(100);
+                this.updateUI();
+            }
+        },
+
+        spawnManager() {
+            if(!this.active) return;
+            
+            const laneX = () => (Math.floor(Math.random() * 3) * (canvas.width / 3)) + (canvas.width / 6);
+
+            // Spawn Obstáculos
+            if(Math.random() < 0.05) {
+                this.obstacles.push({
+                    x: laneX(),
+                    y: -100,
+                    w: 60, h: 40,
+                    speed: this.speed + (Math.random() * 2)
+                });
+            }
+
+            // Spawn Monedas
+            if(Math.random() < 0.04) {
+                this.collectibles.push({
+                    x: laneX(),
+                    y: -100,
+                    radius: 12
+                });
+            }
+
+            setTimeout(() => this.spawnManager(), 800);
+        },
+
+        updateUI() {
+            document.getElementById('speed-val').innerText = Math.floor(this.speed * 25);
+            document.getElementById('hp-val').innerText = this.hp + "%";
+            document.getElementById('coin-val').innerText = this.coins;
+            
+            const hpEl = document.getElementById('hp-val');
+            hpEl.style.color = this.hp <= 30 ? COLORS.pink : COLORS.blue;
+        },
+
+        drawRoad() {
+            // Efecto de movimiento de carretera
+            this.roadOffset = (this.roadOffset + this.speed) % 80;
+            
+            ctx.strokeStyle = "rgba(0, 243, 255, 0.15)";
+            ctx.lineWidth = 2;
+            
+            // Líneas de carriles
+            for(let i=1; i<3; i++) {
+                ctx.beginPath();
+                ctx.setLineDash([40, 40]);
+                ctx.lineDashOffset = -this.roadOffset;
+                ctx.moveTo(i * (canvas.width/3), 0);
+                ctx.lineTo(i * (canvas.width/3), canvas.height);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        },
+
+        drawPlayer(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // Sombra/Glow
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = COLORS.blue;
+            
+            // Cuerpo Principal (Nave/Carro)
+            ctx.fillStyle = COLORS.blue;
+            ctx.beginPath();
+            ctx.moveTo(-20, 60);
+            ctx.lineTo(0, 0);
+            ctx.lineTo(20, 60);
+            ctx.closePath();
+            ctx.fill();
+
+            // Cabina
+            ctx.fillStyle = 'white';
+            ctx.fillRect(-8, 25, 16, 15);
+
+            // Alerones/Luces
+            ctx.fillStyle = COLORS.pink;
+            ctx.fillRect(-22, 55, 6, 10);
+            ctx.fillRect(16, 55, 6, 10);
+            
+            ctx.restore();
+        },
+
+        loop() {
+            if(!this.active) return;
+            
+            // Limpiar fondo con rastro leve
+            ctx.fillStyle = 'rgba(2, 5, 10, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            this.drawRoad();
+
+            // Movimiento suave del carro (Lerp)
+            this.currentX += (this.targetX - this.currentX) * 0.15;
+            const playerY = canvas.height - 100;
+            this.drawPlayer(this.currentX, playerY);
+
+            // Procesar Obstáculos
+            for(let i = this.obstacles.length - 1; i >= 0; i--) {
+                let o = this.obstacles[i];
+                o.y += o.speed;
+                
+                // Dibujo Obstáculo
+                ctx.fillStyle = '#333';
+                ctx.strokeStyle = COLORS.pink;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(o.x - 25, o.y, 50, 50);
+                ctx.fillRect(o.x - 25, o.y, 50, 50);
+                
+                // Colisión
+                if(Math.abs(o.x - this.currentX) < 45 && Math.abs(o.y - playerY) < 50) {
+                    this.hp -= 25;
+                    this.obstacles.splice(i, 1);
+                    this.speed = Math.max(5, this.speed - 2);
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                    this.updateUI();
+                    if(this.hp <= 0) this.gameOver();
+                }
+
+                if(o.y > canvas.height) this.obstacles.splice(i, 1);
+            }
+
+            // Procesar Monedas
+            for(let i = this.collectibles.length - 1; i >= 0; i--) {
+                let c = this.collectibles[i];
+                c.y += this.speed;
+                
+                ctx.fillStyle = COLORS.yellow;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = COLORS.yellow;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if(Math.abs(c.x - this.currentX) < 40 && Math.abs(c.y - playerY) < 40) {
+                    this.coins += 10;
+                    this.collectibles.splice(i, 1);
+                    this.updateUI();
+                }
+
+                if(c.y > canvas.height) this.collectibles.splice(i, 1);
+            }
+
+            this.speed += 0.002; // Aumento de dificultad
+            this.updateUI();
+            requestAnimationFrame(() => this.loop());
+        },
+
+        gameOver() {
+            this.active = false;
+            document.getElementById('overlay').style.display = 'flex';
+        }
+    };
+
+    window.onload = () => Game.init();
+</script>
+</body>
+</html>
