@@ -2,22 +2,405 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Juego RPG</title>
-<link rel="stylesheet" href="game.css">
-</head>
+<title>MAXIQUEEN OS - Tactical Click RPG</title>
+<style>
+    :root {
+        --bg-dark: #020617;
+        --panel-bg: rgba(15, 23, 42, 0.6);
+        --neon-cyan: #22d3ee;
+        --neon-blue: #3b82f6;
+        --neon-magenta: #d946ef;
+        --text-main: #f1f5f9;
+    }
 
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-dark);
+        color: var(--text-main);
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        overflow: hidden;
+        background-image: 
+            linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+    }
+
+    /* Estilo Interfaz Premium / Linear-inspired */
+    .dashboard {
+        background: var(--panel-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(34, 211, 238, 0.2);
+        padding: 15px 30px;
+        border-radius: 16px;
+        display: flex;
+        gap: 40px;
+        margin-bottom: 20px;
+        box-shadow: 0 0 30px rgba(34, 211, 238, 0.05);
+    }
+
+    .stat-box {
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--neon-blue);
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        font-family: monospace;
+        color: var(--neon-cyan);
+        text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+    }
+
+    #gameArea {
+        width: 800px;
+        height: 500px;
+        background: rgba(1, 4, 9, 0.8);
+        border: 2px solid var(--neon-blue);
+        border-radius: 16px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Botón Lanzador Estilo Apple Vision Pro */
+    .btn-cyber {
+        background: transparent;
+        border: 1px solid var(--neon-cyan);
+        color: var(--neon-cyan);
+        padding: 12px 30px;
+        font-size: 14px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        border-radius: 30px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 15px rgba(34, 211, 238, 0.1);
+        margin-bottom: 15px;
+    }
+
+    .btn-cyber:hover {
+        background: var(--neon-cyan);
+        color: var(--bg-dark);
+        box-shadow: 0 0 25px var(--neon-cyan);
+        transform: translateY(-2px);
+    }
+
+    /* Objetivos: Diseño Target Anime + Co */
+    .target {
+        position: absolute;
+        width: 100px;
+        height: 110px;
+        border-radius: 12px;
+        border: 1px solid var(--neon-cyan);
+        background: rgba(15, 23, 42, 0.85);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.1s ease;
+        box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+        animation: spawnGlow 0.5s ease-out;
+    }
+
+    .target:active {
+        transform: scale(0.9);
+    }
+
+    .target-avatar {
+        font-size: 32px;
+        margin-bottom: 5px;
+        filter: drop-shadow(0 0 8px var(--neon-cyan));
+    }
+
+    .target-name {
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        color: var(--text-main);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0 4px;
+    }
+
+    .target-badge {
+        font-size: 8px;
+        background: var(--neon-magenta);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-top: 4px;
+        font-weight: bold;
+    }
+
+    @keyframes spawnGlow {
+        0% { transform: scale(0); box-shadow: 0 0 40px var(--neon-cyan); }
+        100% { transform: scale(1); }
+    }
+
+    /* Pantallas de estado superpuestas */
+    .overlay-screen {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.9);
+        z-index: 10;
+    }
+
+    .overlay-title {
+        font-size: 32px;
+        color: var(--neon-magenta);
+        text-shadow: 0 0 20px var(--neon-magenta);
+        margin-bottom: 20px;
+        letter-spacing: 3px;
+    }
+</style>
+</head>
 <body>
 
-<h1>🎯 Atrapa el objetivo</h1>
+<div class="dashboard">
+    <div class="stat-box">
+        <div class="stat-label">Núcleo Red</div>
+        <div class="stat-value" id="levelDisplay">LVL 1</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Sincronización</div>
+        <div class="stat-value" id="scoreDisplay">000</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Cronómetro</div>
+        <div class="stat-value" id="timeDisplay">15s</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Meta Nivel</div>
+        <div class="stat-value" id="targetDisplay">0/15</div>
+    </div>
+</div>
 
-<p>Puntos: <span id="score">0</span></p>
-<p>Tiempo: <span id="time">10</span></p>
+<button class="btn-cyber" id="startBtn" onclick="initiateSystem()">Inicializar Red</button>
 
-<button onclick="startGame()">Iniciar</button>
+<div id="gameArea">
+    <div class="overlay-screen" id="menuOverlay">
+        <div class="overlay-title">MAXIQUEEN OS v2.0</div>
+        <p style="color: var(--neon-blue)">Módulo de Análisis Táctico e Intercepción Cultural</p>
+    </div>
+</div>
 
-<div id="gameArea"></div>
+<script>
+const gameArea = document.getElementById("gameArea");
+const scoreDisplay = document.getElementById("scoreDisplay");
+const timeDisplay = document.getElementById("timeDisplay");
+const levelDisplay = document.getElementById("levelDisplay");
+const targetDisplay = document.getElementById("targetDisplay");
+const startBtn = document.getElementById("startBtn");
+const menuOverlay = document.getElementById("menuOverlay");
 
-<script src="game.js"></script>
+// Variables de Estado de Juego
+let score = 0;
+let timeLeft = 15;
+let currentLevel = 1;
+let gameInterval = null;
+let countdownInterval = null;
+let isGameActive = false;
+
+// Configuración Avanzada de Niveles (Anime + Cultura de Colombia)
+const levelConfigs = {
+    1: { name: "Eje Cafetero Grid", targetScore: 10, speed: 1800, type: "cafe" },
+    2: { name: "Valle del Chigüiro", targetScore: 18, speed: 1300, type: "chiguiro" },
+    3: { name: "Neon Vueltiao Matrix", targetScore: 25, speed: 900, type: "vueltiao" }
+};
+
+const targetTemplates = {
+    cafe: { name: "Anime Maid Cafetera ☕", icon: "🌸", badge: "Premium" },
+    chiguiro: { name: "Cyber Chigüiro 🦫", icon: "⚡", badge: "Tactical" },
+    vueltiao: { name: "Mecha Vueltiao 👒", icon: "🔮", badge: "Boss" }
+};
+
+// --- MOTOR DE AUDIO SINTÉTICO (Self-Hosted Nativo) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSynthSound(freq, type, duration) {
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    } catch(e) { console.log("Audio render blocked"); }
+}
+
+// Interfaz de Voz del Sistema
+function speakSystem(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Detener voces pendientes
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-CO'; // Acento nativo optimizado
+        utterance.rate = 1.15;
+        utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+// --- LÓGICA INTERNA DEL JUEGO ---
+function initiateSystem() {
+    if (isGameActive) return;
+    
+    // Reset de variables base
+    score = 0;
+    timeLeft = 15;
+    currentLevel = 1;
+    isGameActive = true;
+    
+    menuOverlay.style.display = "none";
+    startBtn.style.display = "none";
+    
+    speakSystem("MaxiQueen en acción. Inicializando protocolo táctico.");
+    updateDashboard();
+    runLevel();
+}
+
+function runLevel() {
+    const config = levelConfigs[currentLevel];
+    if (!config) {
+        endGame(true); // Victoria Absoluta
+        return;
+    }
+
+    levelDisplay.innerText = `LVL ${currentLevel}`;
+    speakSystem(`Nivel ${currentLevel}: ${config.name}`);
+
+    // Intervalo de Spawn de Objetivos
+    gameInterval = setInterval(() => {
+        spawnCyberTarget(config.type);
+    }, config.speed);
+
+    // Intervalo del Reloj Global del Sistema
+    countdownInterval = setInterval(() => {
+        timeLeft--;
+        timeDisplay.innerText = `${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+            clearInterval(gameInterval);
+            clearInterval(countdownInterval);
+            evaluateLevelProgress();
+        }
+    }, 1000);
+}
+
+function spawnCyberTarget(type) {
+    // Eliminar targets previos para evitar saturar la memoria de renderizado
+    const activeTargets = document.querySelectorAll(".target");
+    activeTargets.forEach(t => t.remove());
+
+    const template = targetTemplates[type];
+    const target = document.createElement("div");
+    target.className = "target";
+    
+    // Posicionamiento Matricial Seguro dentro del Canvas CSS
+    const maxX = gameArea.clientWidth - 120;
+    const maxY = gameArea.clientHeight - 130;
+    target.style.left = `${Math.floor(Math.random() * maxX) + 10}px`;
+    target.style.top = `${Math.floor(Math.random() * maxY) + 10}px`;
+
+    target.innerHTML = `
+        <div class="target-avatar">${template.icon}</div>
+        <div class="target-name">${template.name}</div>
+        <div class="target-badge">${template.badge}</div>
+    `;
+
+    // Intercepción exitosa (Clic)
+    target.addEventListener("mousedown", () => {
+        score++;
+        playSynthSound(587.33, "triangle", 0.15); // Sonido Láser de confirmación
+        updateDashboard();
+        target.remove();
+    });
+
+    gameArea.appendChild(target);
+}
+
+function updateDashboard() {
+    const config = levelConfigs[currentLevel];
+    scoreDisplay.innerText = score < 100 ? ("00" + score).slice(-3) : score;
+    timeDisplay.innerText = `${timeLeft}s`;
+    if (config) {
+        targetDisplay.innerText = `${score}/${config.targetScore}`;
+    }
+}
+
+function evaluateLevelProgress() {
+    const config = levelConfigs[currentLevel];
+    
+    // Remover remanentes en el área
+    document.querySelectorAll(".target").forEach(t => t.remove());
+
+    if (score >= config.targetScore) {
+        currentLevel++;
+        timeLeft = 15; // Reset de tiempo para el siguiente entorno
+        playSynthSound(880, "sine", 0.4); // Fanfarria de éxito
+        
+        if (levelConfigs[currentLevel]) {
+            speakSystem("Fase completada con éxito. Elevando privilegios del sistema.");
+            runLevel();
+        } else {
+            endGame(true);
+        }
+    } else {
+        endGame(false); // Brecha de Seguridad
+    }
+}
+
+function endGame(isVictory) {
+    isGameActive = false;
+    clearInterval(gameInterval);
+    clearInterval(countdownInterval);
+    
+    menuOverlay.style.display = "flex";
+    startBtn.style.display = "inline-block";
+    startBtn.innerText = "Reiniciar Red";
+
+    if (isVictory) {
+        menuOverlay.innerHTML = `
+            <div class="overlay-title" style="color: var(--neon-cyan); text-shadow: 0 0 25px var(--neon-cyan)">SISTEMA DEFENSA OPTIMIZADO</div>
+            <p style="color: #10b981">Todos los sectores culturales de Colombia están asegurados.</p>
+            <p style="font-size: 20px">Puntuación Final: ${score}</p>
+        `;
+        speakSystem("Análisis completado. Servidores asegurados. Eres grande.");
+    } else {
+        playSynthSound(110, "sawtooth", 0.6); // Alerta crítica analógica
+        menuOverlay.innerHTML = `
+            <div class="overlay-title" style="color: var(--neon-magenta)">BRECHA DE SEGURIDAD</div>
+            <p style="color: #ef4444">El software no alcanzó la sincronización mínima requerida.</p>
+            <p style="font-size: 18px">Te quedaste en el Nivel ${currentLevel}</p>
+        `;
+        speakSystem("Fallo en la sincronización del núcleo. Reestructure el algoritmo e intente de nuevo.");
+    }
+}
+</script>
 
 </body>
 </html>
