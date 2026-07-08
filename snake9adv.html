@@ -2,283 +2,726 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Snake Protocol: Neon Ascension</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS v2 - Snake Protocol: Neon Ascension</title>
     <style>
         :root {
             --cyan: #00f2ff;
             --magenta: #ff00ff;
             --yellow: #ffff00;
-            --bg: #020205;
+            --bg: #030308;
+            --surface: #0a0a14;
+            --surface-brd: #121226;
+            --text-muted: #626282;
         }
+
         body {
             background-color: var(--bg);
             color: var(--cyan);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Consolas', 'Courier New', monospace;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            height: 100vh;
+            align-items: center;
+            min-height: 100vh;
             margin: 0;
             overflow: hidden;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            user-select: none;
+            -webkit-user-select: none;
         }
+
+        /* Contenedor Principal en Red */
+        #mq-cyber-container {
+            display: flex;
+            gap: 20px;
+            background: rgba(10, 10, 20, 0.85);
+            padding: 20px;
+            border: 1px solid var(--surface-brd);
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.05);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        /* Columna de Operaciones (Juego) */
+        #workspace-lane {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
         #hud {
             display: flex;
             justify-content: space-between;
-            width: 400px;
-            margin-bottom: 10px;
+            width: 440px;
+            margin-bottom: 12px;
             font-weight: bold;
+            font-size: 14px;
             text-shadow: 0 0 10px var(--cyan);
         }
+
+        .hud-panel {
+            background: var(--surface);
+            border: 1px solid var(--surface-brd);
+            padding: 8px 16px;
+            border-radius: 2px;
+        }
+
+        #canvas-frame {
+            position: relative;
+            width: 440px;
+            height: 440px;
+        }
+
         canvas {
-            border: 3px solid var(--cyan);
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.15), inset 0 0 20px rgba(0, 242, 255, 0.1);
-            background: radial-gradient(circle, #0a0a1a 0%, #020205 100%);
+            border: 2px solid var(--cyan);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1), inset 0 0 20px rgba(0, 242, 255, 0.05);
+            background: radial-gradient(circle, #060612 0%, #020205 100%);
+            display: block;
         }
-        .controls-hint {
-            margin-top: 15px;
-            font-size: 10px;
-            color: rgba(0, 242, 255, 0.5);
+
+        /* Columna del Avatar y Terminal Social */
+        #meta-panel {
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        #lvl-up-msg {
+
+        /* Panel del Avatar Neural */
+        .avatar-box {
+            background: var(--surface);
+            border: 1px solid var(--surface-brd);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-radius: 2px;
+        }
+
+        .avatar-vis {
+            width: 70px;
+            height: 70px;
+            border: 2px solid var(--cyan);
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #04040a;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        }
+
+        .avatar-pulse {
+            width: 45px;
+            height: 45px;
+            border: 2px dashed var(--magenta);
+            border-radius: 50%;
+            animation: spin 8s linear infinite;
+        }
+
+        .avatar-core {
             position: absolute;
-            font-size: 40px;
-            display: none;
-            animation: pulse 0.5s infinite;
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--cyan);
+        }
+
+        /* Estado del Habla del Avatar */
+        .avatar-vis.talking .avatar-pulse {
+            animation: spin 1s linear infinite, pulseTransform 0.4s ease-in-out infinite alternate;
+            border-color: var(--yellow);
+        }
+
+        .avatar-info {
+            flex: 1;
+        }
+
+        .avatar-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 8px var(--cyan);
+        }
+
+        .avatar-status {
+            font-size: 10px;
+            color: var(--yellow);
+            margin-top: 4px;
+        }
+
+        /* Terminal Co-Op (Interacción de Usuarios Simulada) */
+        .terminal-users {
+            flex: 1;
+            background: #020205;
+            border: 1px solid var(--surface-brd);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: hidden;
+            font-size: 11px;
+            border-left: 3px solid var(--magenta);
+        }
+
+        .terminal-title {
+            color: var(--text-muted);
+            font-size: 10px;
+            border-bottom: 1px solid var(--surface-brd);
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+
+        .log-line {
+            line-height: 1.4;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .log-user { color: var(--yellow); }
+        .log-action { color: #fff; }
+
+        /* Capas de Estado del Sistema */
+        .screen-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 3, 8, 0.92);
+            backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             z-index: 10;
         }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.7; color: var(--magenta); }
-            100% { transform: scale(1); opacity: 1; }
+
+        .hidden { display: none !important; }
+
+        .overlay-card {
+            text-align: center;
+            padding: 30px;
+            border: 1px solid var(--cyan);
+            background: var(--surface);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.15);
         }
+
+        .btn {
+            background: transparent;
+            color: var(--cyan);
+            border: 1px solid var(--cyan);
+            padding: 10px 24px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--cyan);
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulseTransform { 0% { transform: scale(0.9) rotate(0deg); } 100% { transform: scale(1.2) rotate(180deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div id="hud">
-        <span>LVL: <span id="lvl">1</span></span>
-        <span id="score">DATA: 0000</span>
+    <div id="mq-cyber-container">
+        
+        <div id="workspace-lane">
+            <div id="hud">
+                <div class="hud-panel">NODO: <span id="lbl-level">01</span></div>
+                <div class="hud-panel" style="color: var(--magenta);">OBJ: <span id="lbl-target">050</span></div>
+                <div class="hud-panel" id="score">DATA: 0000</div>
+            </div>
+
+            <div id="canvas-frame">
+                <canvas id="gameCanvas" width="440" height="440"></canvas>
+                
+                <div id="layer-start" class="screen-overlay">
+                    <div class="overlay-card">
+                        <h2 style="margin: 0 0 10px 0; color: #fff;">ASCENSIÓN_NEÓN</h2>
+                        <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 20px 0;">PROTOCOLO INTEGRADO MAXIQUEEN OS v2</p>
+                        <button class="btn" onclick="game.boot()">VINCULAR NÚCLEO</button>
+                    </div>
+                </div>
+
+                <div id="layer-status" class="screen-overlay hidden">
+                    <div class="overlay-card" id="status-card" style="border-color: var(--magenta);">
+                        <h2 id="status-title" style="margin: 0; color: var(--magenta);">ALERTA</h2>
+                        <p id="status-desc" style="font-size: 11px; margin: 15px 0; color: #fff; max-width: 280px; line-height: 1.4;"></p>
+                        <button class="btn" id="status-btn" onclick="game.dismissOverlay()">PROSEGUIR</button>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 9px; color: var(--text-muted); margin-top: 8px;">TRANSMISIÓN CRIPTOGRÁFICA DIRECTA SIN TERCEROS</div>
+        </div>
+
+        <div id="meta-panel">
+            <div class="avatar-box">
+                <div class="avatar-vis" id="avatar-ui">
+                    <div class="avatar-pulse"></div>
+                    <div class="avatar-core"></div>
+                </div>
+                <div class="avatar-info">
+                    <div class="avatar-name">M.Q. CORE v2</div>
+                    <div class="avatar-status" id="avatar-action">SISTEMA EN ESPERA</div>
+                </div>
+            </div>
+
+            <div class="terminal-users">
+                <div class="terminal-title">TERMINAL CO-OP // AGENTES EN LÍNEA</div>
+                <div id="user-logs" style="display: flex; flex-direction: column; gap: 6px;">
+                    </div>
+            </div>
+        </div>
     </div>
-    
-    <div id="lvl-up-msg">LEVEL UP</div>
 
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
+<script>
+/**
+ * ENGINE: MAXIQUEEN NEON ASCENSION CORE v2
+ * Advanced Client-Side Procedural Architecture
+ */
 
-    <div class="controls-hint">USAR FLECHAS PARA NAVEGAR EL PROTOCOLO</div>
+// --- BASE DE DATOS DE MAPAS ADAPTATIVOS (10 NIVELES COMPLETOS) ---
+const SECTOR_DATA = [
+    { lvl: 1,  name: "ACCESO_INICIAL",    target: 50,  speed: 100, walls: [] },
+    { lvl: 2,  name: "RED_PERIMETRAL",    target: 100, speed: 92,  walls: [{x:4, y:5, w:14, h:1}, {x:4, y:16, w:14, h:1}] },
+    { lvl: 3,  name: "FILTRADO_PAQUETES", target: 150, speed: 85,  walls: [{x:5, y:4, w:1, h:14}, {x:16, y:4, w:1, h:14}] },
+    { lvl: 4,  name: "CORTAFUEGOS_SYNC",  target: 200, speed: 78,  walls: [{x:4, y:4, w:4, h:4}, {x:14, y:4, w:4, h:4}, {x:4, y:14, w:4, h:4}, {x:14, y:14, w:4, h:4}] },
+    { lvl: 5,  name: "NÚCLEO_ENCRIPTADO", target: 250, speed: 72,  walls: [{x:10, y:2, w:2, h:7}, {x:10, y:13, w:2, h:7}, {x:2, y:10, w:7, h:2}, {x:13, y:10, w:7, h:2}] },
+    { lvl: 6,  name: "SÉCUENCIA_AISLADA", target: 300, speed: 66,  walls: [{x:2, y:5, w:8, h:1}, {x:12, y:5, w:8, h:1}, {x:2, y:16, w:8, h:1}, {x:12, y:16, w:8, h:1}, {x:10, y:9, w:2, h:4}] },
+    { lvl: 7,  name: "FLUJO_ASÍNCRONO",   target: 350, speed: 60,  walls: [{x:5, y:2, w:1, h:6}, {x:16, y:2, w:1, h:6}, {x:5, y:14, w:1, h:6}, {x:16, y:14, w:1, h:6}, {x:8, y:10, w:6, h:1}] },
+    { lvl: 8,  name: "MATRIZ_CUÁNTICA",   target: 400, speed: 55,  walls: [{x:3, y:3, w:16, h:1}, {x:3, y:18, w:16, h:1}, {x:3, y:4, w:1, h:5}, {x:18, y:4, w:1, h:5}, {x:3, y:13, w:1, h:5}, {x:18, y:13, w:1, h:5}] },
+    { lvl: 9,  name: "INFRA_SINGULAR",    target: 500, speed: 50,  walls: [{x:0, y:10, w:9, h:2}, {x:13, y:10, w:9, h:2}, {x:10, y:0, w:2, h:9}, {x:10, y:13, w:2, h:9}] },
+    { lvl: 10, name: "MAXIQUEEN_OMEGA",   target: 750, speed: 44,  walls: [{x:4, y:4, w:14, h:1}, {x:4, y:17, w:14, h:1}, {x:4, y:5, w:1, h:12}, {x:17, y:5, w:1, h:12}, {x:8, y:8, w:6, h:2}, {x:8, y:12, w:6, h:2}] }
+];
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const scoreEl = document.getElementById("score");
-        const lvlEl = document.getElementById("lvl");
-        const lvlMsg = document.getElementById("lvl-up-msg");
+// --- TEXT SIMULATION MATRIX FOR NETWORK USERS ---
+const CONCURRENT_USERS = ["Hyperion_UX", "Delta_Node", "Cesar_Dev", "Sister_Eng", "Broker_ST", "Null_Void", "Proxy_Hunter"];
+const USER_PHRASES = [
+    "Infiltrando el puerto proxy subyacente.",
+    "Bypaseando cortafuegos del nodo primario.",
+    "Paquete de telemetría extraído con éxito.",
+    "Carga de datos compartida en el búfer común.",
+    "Alerta: Densidad de obstáculos incrementada.",
+    "Estabilizando canal cuántico para soporte táctico."
+];
 
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
+// --- ENGINE CONTROLLER ---
+class CyberEngine {
+    constructor() {
+        this.canvas = document.getElementById("gameCanvas");
+        this.ctx = this.canvas.getContext("2d");
+        this.gridSize = 20;
+        this.tileCount = this.canvas.width / this.gridSize;
 
-        let snake, food, powerUp, obstacles, d, score, level, gameSpeed, isGameOver;
-        let shakeFrames = 0;
+        this.levelIndex = 0;
+        this.score = 0;
+        this.snake = [];
+        this.obstacles = [];
+        this.food = { x: 0, y: 0 };
+        this.powerUp = null;
+        
+        this.direction = "RIGHT";
+        this.nextDirection = "RIGHT";
+        this.isGameOver = false;
+        this.loopTimer = null;
+        
+        this.shakeFrames = 0;
+        this.speechQueue = [];
+        this.isSpeaking = false;
+        
+        this.bindHardwareEvents();
+    }
 
-        // Configuración de niveles
-        const levelConfig = {
-            1: { target: 50, speed: 100, walls: [] },
-            2: { target: 150, speed: 85, walls: [
-                {x: 5, y: 5, w: 10, h: 1}, {x: 5, y: 14, w: 10, h: 1} // Muros horizontales
-            ]},
-            3: { target: 300, speed: 70, walls: [
-                {x: 4, y: 4, w: 1, h: 12}, {x: 15, y: 4, w: 1, h: 12}, // Muros verticales
-                {x: 8, y: 10, w: 4, h: 1}
-            ]}
+    // --- MANEJO DE AUDIO DE HARDWARE ANALÓGICO ---
+    playSynthTone(freq, type = 'sine', duration = 0.1, vol = 0.05) {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    // --- MOTOR DE VOZ ANALÍTICA CON COLA ASÍNCRONA CORREGIDA ---
+    speak(text, priority = false) {
+        if (priority) {
+            window.speechSynthesis.cancel();
+            this.speechQueue = [];
+            this.isSpeaking = false;
+        }
+        this.speechQueue.push(text);
+        this.processSpeechQueue();
+    }
+
+    processSpeechQueue() {
+        if (this.isSpeaking || this.speechQueue.length === 0) return;
+        
+        const nextText = this.speechQueue.shift();
+        if (!('speechSynthesis' in window)) return;
+
+        const utterance = new SpeechSynthesisUtterance(nextText);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.25;
+        utterance.pitch = 0.95;
+
+        utterance.onstart = () => {
+            this.isSpeaking = true;
+            document.getElementById("avatar-ui").classList.add("talking");
+            document.getElementById("avatar-action").innerText = "ANALIZANDO MATRIZ...";
         };
 
-        function init() {
-            snake = [{x: 10 * gridSize, y: 10 * gridSize}];
-            d = "RIGHT";
-            score = 0;
-            level = 1;
-            isGameOver = false;
-            obstacles = [];
-            powerUp = null;
-            loadLevel(1);
-            placeFood();
-            loop();
-        }
+        utterance.onend = () => {
+            this.isSpeaking = false;
+            document.getElementById("avatar-ui").classList.remove("talking");
+            document.getElementById("avatar-action").innerText = "MONITORIZANDO RED";
+            this.processSpeechQueue();
+        };
 
-        function loadLevel(lvl) {
-            level = lvl;
-            lvlEl.innerText = level;
-            gameSpeed = levelConfig[level].speed;
-            obstacles = [];
-            levelConfig[level].walls.forEach(w => {
-                for(let i=0; i<w.w; i++) {
-                    for(let j=0; j<w.h; j++) {
-                        obstacles.push({x: (w.x + i) * gridSize, y: (w.y + j) * gridSize});
-                    }
-                }
-            });
-            
-            // Animación visual de cambio de nivel
-            lvlMsg.style.display = "block";
-            setTimeout(() => lvlMsg.style.display = "none", 1500);
-        }
+        utterance.onerror = () => {
+            this.isSpeaking = false;
+            document.getElementById("avatar-ui").classList.remove("talking");
+            this.processSpeechQueue();
+        };
 
-        function placeFood() {
-            food = {
-                x: Math.floor(Math.random() * tileCount) * gridSize,
-                y: Math.floor(Math.random() * tileCount) * gridSize
-            };
-            // Evitar spawn en obstáculos o serpiente
-            if (obstacles.some(o => o.x === food.x && o.y === food.y) || 
-                snake.some(s => s.x === food.x && s.y === food.y)) {
-                placeFood();
-            }
-        }
+        window.speechSynthesis.speak(utterance);
+    }
 
-        function spawnPowerUp() {
-            if (Math.random() > 0.8 && !powerUp) {
-                powerUp = {
-                    x: Math.floor(Math.random() * tileCount) * gridSize,
-                    y: Math.floor(Math.random() * tileCount) * gridSize,
-                    life: 50 // Duración limitada
-                };
-            }
-        }
-
+    bindHardwareEvents() {
+        // Enlace Teclado Estándar + WASD
         document.addEventListener("keydown", e => {
-            const keys = {37: "LEFT", 38: "UP", 39: "RIGHT", 40: "DOWN"};
-            const newD = keys[e.keyCode];
-            if (!newD) return;
-            const opposites = {"LEFT":"RIGHT", "RIGHT":"LEFT", "UP":"DOWN", "DOWN":"UP"};
-            if (newD !== opposites[d]) d = newD;
+            const mapping = {
+                37: "LEFT", 65: "LEFT",
+                38: "UP", 87: "UP",
+                39: "RIGHT", 68: "RIGHT",
+                40: "DOWN", 83: "DOWN"
+            };
+            const targetD = mapping[e.keyCode];
+            if (!targetD) return;
+
+            const opposites = { "LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP" };
+            if (targetD !== opposites[this.direction]) {
+                this.nextDirection = targetD;
+            }
         });
 
-        function update() {
-            if (isGameOver) return;
+        // Soporte Táctil/Click Cartesiano Adaptativo Co-Op
+        this.canvas.addEventListener("mousedown", e => this.handleSpatialClick(e));
+        this.canvas.addEventListener("touchstart", e => {
+            e.preventDefault();
+            this.handleSpatialClick(e.touches[0]);
+        }, { passive: false });
+    }
 
-            let headX = snake[0].x;
-            let headY = snake[0].y;
+    handleSpatialClick(coordSource) {
+        if (this.isGameOver) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const clickX = coordSource.clientX - rect.left;
+        const clickY = coordSource.clientY - rect.top;
+        
+        const head = this.snake[0];
+        if (this.direction === "UP" || this.direction === "DOWN") {
+            this.nextDirection = (clickX < head.x) ? "LEFT" : "RIGHT";
+        } else {
+            this.nextDirection = (clickY < head.y) ? "UP" : "DOWN";
+        }
+    }
 
-            if (d === "LEFT") headX -= gridSize;
-            if (d === "UP") headY -= gridSize;
-            if (d === "RIGHT") headX += gridSize;
-            if (d === "DOWN") headY += gridSize;
+    boot() {
+        document.getElementById("layer-start").classList.add("hidden");
+        this.levelIndex = 0;
+        this.score = 0;
+        this.speak("Inicializando protocolo Ascensión Neón en MaxiQueen O S v2. Conectando con nodos concurrentes.", true);
+        this.loadSector(this.levelIndex);
+        this.startSocialSim();
+        this.loop();
+    }
 
-            // Colisión con paredes o límites
-            const hitWall = obstacles.some(o => o.x === headX && o.y === headY);
-            if (headX < 0 || headX >= canvas.width || headY < 0 || headY >= canvas.height || hitWall || 
-                snake.some(s => s.x === headX && s.y === headY)) {
-                isGameOver = true;
+    loadSector(idx) {
+        this.levelIndex = idx;
+        const cfg = SECTOR_DATA[this.levelIndex];
+        
+        document.getElementById("lbl-level").innerText = String(cfg.lvl).padStart(2, '0');
+        document.getElementById("lbl-target").innerText = String(cfg.target).padStart(3, '0');
+        
+        // Despliegue procedural de muros estructurados
+        this.obstacles = [];
+        cfg.walls.forEach(w => {
+            for(let i = 0; i < w.w; i++) {
+                for(let j = 0; j < w.h; j++) {
+                    this.obstacles.push({ x: (w.x + i) * this.gridSize, y: (w.y + j) * this.gridSize });
+                }
+            }
+        });
+
+        // Reposicionamiento del vector de la serpiente fuera de los muros del sector
+        this.snake = [{ x: 10 * this.gridSize, y: 12 * this.gridSize }];
+        this.direction = "RIGHT";
+        this.nextDirection = "RIGHT";
+        this.powerUp = null;
+        
+        this.placeFoodUnits();
+        
+        this.speak(`Sector ${cfg.lvl} cargado. Objetivo analítico: ${cfg.target} registros core en arquitectura de red ${cfg.name}.`);
+    }
+
+    placeFoodUnits() {
+        let valid = false;
+        while (!valid) {
+            this.food = {
+                x: Math.floor(Math.random() * this.tileCount) * this.gridSize,
+                y: Math.floor(Math.random() * this.tileCount) * this.gridSize
+            };
+            const hitWall = this.obstacles.some(o => o.x === this.food.x && o.y === this.food.y);
+            const hitSnake = this.snake.some(s => s.x === this.food.x && s.y === this.food.y);
+            if (!hitWall && !hitSnake) valid = true;
+        }
+    }
+
+    triggerQuantumPowerup() {
+        if (Math.random() > 0.75 && !this.powerUp) {
+            let valid = false;
+            let px, py;
+            while(!valid) {
+                px = Math.floor(Math.random() * this.tileCount) * this.gridSize;
+                py = Math.floor(Math.random() * this.tileCount) * this.gridSize;
+                const hitWall = this.obstacles.some(o => o.x === px && o.y === py);
+                if (!hitWall) valid = true;
+            }
+            this.powerUp = { x: px, y: py, life: 60 };
+            this.speak("Inyección de datos detectada. Paquete cuántico disponible temporalmente en el plano.");
+        }
+    }
+
+    update() {
+        if (this.isGameOver) return;
+
+        this.direction = this.nextDirection;
+        let headX = this.snake[0].x;
+        let headY = this.snake[0].y;
+
+        if (this.direction === "LEFT")  headX -= this.gridSize;
+        if (this.direction === "UP")    headY -= this.gridSize;
+        if (this.direction === "RIGHT") headX += this.gridSize;
+        if (this.direction === "DOWN")  headY += this.gridSize;
+
+        // Evaluación Predictiva de Colisiones Críticas
+        const hitWall = this.obstacles.some(o => o.x === headX && o.y === headY);
+        const hitSelf = this.snake.some(s => s.x === headX && s.y === headY);
+        const hitBounds = (headX < 0 || headX >= this.canvas.width || headY < 0 || headY >= this.canvas.height);
+
+        if (hitWall || hitSelf || hitBounds) {
+            this.executeFailureSequence(hitWall ? "COLISIÓN CON VECTOR ESTÁTICO" : hitSelf ? "INTERRUPCIÓN POR AUTO-CRUCE" : "DESBORDAMIENTO DE MEMORIA PERIMETRAL");
+            return;
+        }
+
+        const newHead = { x: headX, y: headY };
+
+        // Absorción de Paquete Regular (Food)
+        if (headX === this.food.x && headY === this.food.y) {
+            this.score += 10;
+            this.shakeFrames = 4;
+            this.playSynthTone(587.33, 'triangle', 0.08, 0.06);
+            this.placeFoodUnits();
+            this.triggerQuantumPowerup();
+            
+            // Análisis predictivo intermedio por voz
+            const currentCfg = SECTOR_DATA[this.levelIndex];
+            if (this.score === Math.floor(currentCfg.target / 2)) {
+                this.speak(`Carga al cincuenta por ciento. Extracción estable.`);
+            }
+
+            // Transición de nivel
+            if (this.score >= currentCfg.target) {
+                this.advanceSectorSequence();
                 return;
             }
+        } 
+        // Absorción de Núcleo Cuántico (PowerUp)
+        else if (this.powerUp && headX === this.powerUp.x && headY === this.powerUp.y) {
+            this.score += 50;
+            this.shakeFrames = 10;
+            this.playSynthTone(880, 'square', 0.15, 0.08);
+            this.powerUp = null;
+            this.speak("Paquete cuántico absorbido de forma segura. Expansión de datos realizada.");
+            
+            if (this.score >= SECTOR_DATA[this.levelIndex].target) {
+                this.advanceSectorSequence();
+                return;
+            }
+        } 
+        else {
+            this.snake.pop();
+        }
 
-            const newHead = {x: headX, y: headY};
+        this.snake.unshift(newHead);
 
-            // Comer Food
-            if (headX === food.x && headY === food.y) {
-                score += 10;
-                shakeFrames = 5;
-                placeFood();
-                spawnPowerUp();
-                if (level < 3 && score >= levelConfig[level].target) loadLevel(level + 1);
-            } else if (powerUp && headX === powerUp.x && headY === powerUp.y) {
-                score += 50;
-                powerUp = null;
-                gameSpeed += 20; // Ralentiza (fácil) temporalmente
-                setTimeout(() => gameSpeed = levelConfig[level].speed, 3000);
+        // Degradación de vida del PowerUp
+        if (this.powerUp) {
+            this.powerUp.life--;
+            if (this.powerUp.life <= 0) this.powerUp = null;
+        }
+
+        document.getElementById("score").innerText = "DATA: " + String(this.score).padStart(4, '0');
+    }
+
+    draw() {
+        this.ctx.save();
+        
+        // Simulación de oscilación de pantalla por impacto espacial (Screen Shake)
+        if (this.shakeFrames > 0) {
+            this.ctx.translate(Math.random() * 4 - 2, Math.random() * 4 - 2);
+            this.shakeFrames--;
+        }
+
+        // Renderizado del Fondo de Operaciones
+        this.ctx.fillStyle = "#030308";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Cuadrícula Vectorial Estética de Fondo
+        this.ctx.strokeStyle = "rgba(0, 242, 255, 0.03)";
+        this.ctx.lineWidth = 1;
+        for (let i = 0; i < this.canvas.width; i += this.gridSize) {
+            this.ctx.beginPath(); this.ctx.moveTo(i, 0); this.ctx.lineTo(i, this.canvas.height); this.ctx.stroke();
+            this.ctx.beginPath(); this.ctx.moveTo(0, i); this.ctx.lineTo(this.canvas.width, i); this.ctx.stroke();
+        }
+
+        // Dibujar Muros de Energía (Obstáculos)
+        this.ctx.fillStyle = "rgba(255, 0, 255, 0.15)";
+        this.ctx.strokeStyle = varColor('--magenta');
+        this.ctx.lineWidth = 2;
+        this.obstacles.forEach(o => {
+            this.ctx.fillRect(o.x + 1, o.y + 1, this.gridSize - 2, this.gridSize - 2);
+            this.ctx.strokeRect(o.x + 2, o.y + 2, this.gridSize - 4, this.gridSize - 4);
+        });
+
+        // Dibujar Núcleo Cuántico Dinámico (PowerUp)
+        if (this.powerUp) {
+            this.ctx.save();
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = varColor('--yellow');
+            this.ctx.fillStyle = varColor('--yellow');
+            this.ctx.beginPath();
+            this.ctx.arc(this.powerUp.x + this.gridSize/2, this.powerUp.y + this.gridSize/2, this.gridSize/3.5, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
+        // Dibujar Registro Regular (Food)
+        this.ctx.save();
+        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = varColor('--cyan');
+        this.ctx.fillStyle = "#fff";
+        this.ctx.fillRect(this.food.x + 4, this.food.y + 4, this.gridSize - 8, this.gridSize - 8);
+        this.ctx.restore();
+
+        // Dibujar Flujo de la Serpiente Criptográfica
+        this.snake.forEach((s, idx) => {
+            this.ctx.save();
+            if (idx === 0) {
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = varColor('--cyan');
+                this.ctx.fillStyle = "#ffffff";
             } else {
-                snake.pop();
+                this.ctx.fillStyle = `rgba(0, 242, 255, ${1 - (idx / (this.snake.length + 3))})`;
             }
+            this.ctx.fillRect(s.x + 1, s.y + 1, this.gridSize - 2, this.gridSize - 2);
+            this.ctx.restore();
+        });
 
-            snake.unshift(newHead);
-            if (powerUp) {
-                powerUp.life--;
-                if (powerUp.life <= 0) powerUp = null;
-            }
+        this.ctx.restore();
+    }
+
+    advanceSectorSequence() {
+        this.playSynthTone(440, 'sine', 0.3, 0.05);
+        if (this.levelIndex >= SECTOR_DATA.length - 1) {
+            // Fin Absoluto de la Matriz de 10 niveles
+            this.isGameOver = true;
+            this.showOverlay("MATRIZ COMPLETADA", `Extracción absoluta realizada. Los 10 nodos de MaxiQueen OS v2 han sido asegurados de forma óptima.`, "REINICIAR MATRIZ", () => { location.reload(); });
+            this.speak("Atención operadora. Protocolo completado con éxito. Todos los sectores de datos han sido purificados.", true);
+        } else {
+            this.levelIndex++;
+            this.loadSector(this.levelIndex);
+        }
+    }
+
+    executeFailureSequence(reason) {
+        this.isGameOver = true;
+        this.playSynthTone(100, 'sawtooth', 0.4, 0.15);
+        this.speak(`Fallo crítico. ${reason}. Deteniendo flujo de red común.`, true);
+        
+        this.showOverlay("PROTOCOL_TERMINATED", `${reason}. Canal comprometido en el Nodo ${String(this.levelIndex + 1).padStart(2, '0')}.`, "FORZAR REBOOT", () => {
+            this.dismissOverlay();
+            this.score = 0;
+            this.isGameOver = false;
+            this.loadSector(this.levelIndex);
+            this.loop();
+        });
+    }
+
+    showOverlay(title, desc, btnText, callback) {
+        document.getElementById("status-title").innerText = title;
+        document.getElementById("status-desc").innerText = desc;
+        const btn = document.getElementById("status-btn");
+        btn.innerText = btnText;
+        btn.onclick = callback;
+        document.getElementById("layer-status").classList.remove("hidden");
+    }
+
+    dismissOverlay() {
+        document.getElementById("layer-status").classList.add("hidden");
+    }
+
+    // --- BUCLE DE CONTROL DEL SUBSISTEMA DE TIEMPO RECTIFICADO ---
+    loop() {
+        if (this.isGameOver) return;
+        this.update();
+        this.draw();
+        const currentSpeed = SECTOR_DATA[this.levelIndex].speed;
+        this.loopTimer = setTimeout(() => this.loop(), currentSpeed);
+    }
+
+    // --- GENERADOR DE INTERACCIÓN DE USUARIOS CONCURRENTES (CO-OP SIM) ---
+    startSocialSim() {
+        const pane = document.getElementById("user-logs");
+        setInterval(() => {
+            if (this.isGameOver) return;
+            const user = CONCURRENT_USERS[Math.floor(Math.random() * CONCURRENT_USERS.length)];
+            const text = USER_PHRASES[Math.floor(Math.random() * USER_PHRASES.length)];
             
-            scoreEl.innerText = "DATA: " + score.toString().padStart(4, '0');
-        }
-
-        function draw() {
-            // Efecto Screen Shake
-            ctx.save();
-            if (shakeFrames > 0) {
-                ctx.translate(Math.random()*5 - 2.5, Math.random()*5 - 2.5);
-                shakeFrames--;
-            }
-
-            // Fondo con rejilla
-            ctx.fillStyle = varColor('--bg');
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const line = document.createElement("div");
+            line.className = "log-line";
+            line.innerHTML = `[<span class="log-user">${user}</span>]: <span class="log-action">${text}</span>`;
             
-            ctx.strokeStyle = "rgba(0, 242, 255, 0.05)";
-            for(let i=0; i<canvas.width; i+=gridSize) {
-                ctx.strokeRect(i, 0, 1, canvas.height);
-                ctx.strokeRect(0, i, canvas.width, 1);
+            pane.appendChild(line);
+            if (pane.children.length > 8) {
+                pane.removeChild(pane.children[0]);
             }
+            this.playSynthTone(1200, 'sine', 0.01, 0.005);
+        }, 4500);
+    }
+}
 
-            // Dibujar Obstáculos (Muros de Energía)
-            obstacles.forEach(o => {
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = varColor('--magenta');
-                ctx.fillStyle = varColor('--magenta');
-                ctx.fillRect(o.x+1, o.y+1, gridSize-2, gridSize-2);
-            });
+function varColor(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 
-            // Dibujar PowerUp
-            if (powerUp) {
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = varColor('--yellow');
-                ctx.fillStyle = varColor('--yellow');
-                ctx.beginPath();
-                ctx.arc(powerUp.x + gridSize/2, powerUp.y + gridSize/2, gridSize/3, 0, Math.PI*2);
-                ctx.fill();
-            }
-
-            // Dibujar Food
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = varColor('--cyan');
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(food.x+4, food.y+4, gridSize-8, gridSize-8);
-
-            // Dibujar Serpiente con efecto de degradado
-            snake.forEach((s, i) => {
-                ctx.shadowBlur = (i === 0) ? 20 : 5;
-                ctx.shadowColor = varColor('--cyan');
-                ctx.fillStyle = (i === 0) ? "#fff" : `rgba(0, 242, 255, ${1 - i/snake.length})`;
-                ctx.fillRect(s.x + 1, s.y + 1, gridSize - 2, gridSize - 2);
-            });
-
-            if (isGameOver) {
-                ctx.fillStyle = "rgba(0,0,0,0.8)";
-                ctx.fillRect(0,0,canvas.width, canvas.height);
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = "red";
-                ctx.fillStyle = "#fff";
-                ctx.font = "20px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText("PROTOCOL_TERMINATED", canvas.width/2, canvas.height/2);
-                ctx.font = "12px Arial";
-                ctx.fillText("CLICK PARA REINICIAR", canvas.width/2, canvas.height/2 + 30);
-            }
-            ctx.restore();
-        }
-
-        function varColor(name) {
-            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-        }
-
-        function loop() {
-            update();
-            draw();
-            if (!isGameOver) setTimeout(loop, gameSpeed);
-        }
-
-        canvas.addEventListener("click", () => { if(isGameOver) init(); });
-
-        init();
-    </script>
+// Inicialización del Motor Avanzado
+const game = new CyberEngine();
+</script>
 </body>
 </html>

@@ -3,156 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MAXIQUEEN OS | NEON RUNNER v4.0</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <title>MAXIQUEEN OS v2 | NEON RUNNER v4.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --mq-gold: #FFD700; --mq-blue: #0052FF; --mq-red: #FF2B2B; --mq-black: #020205;
-            --neon-glow: 0 0 15px var(--mq-blue);
+            --mq-gold: #FFD700; 
+            --mq-blue: #0052FF; 
+            --mq-red: #FF2B2B; 
+            --mq-cyan: #00f2ff;
+            --mq-black: #020205;
+            --surface: #0a0a14;
+            --surface-brd: #121226;
+            --text-muted: #626282;
         }
+
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
-            background: var(--mq-black); color: white; font-family: 'Orbitron', sans-serif;
-            overflow: hidden; touch-action: none;
+            background: var(--mq-black); color: white; font-family: 'Consolas', 'Courier New', monospace;
+            overflow: hidden; touch-action: none; text-transform: uppercase; letter-spacing: 1px;
+            user-select: none; -webkit-user-select: none;
         }
-        #viewport { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
-        canvas { display: block; filter: contrast(1.1) saturate(1.2); }
 
-        /* HUD HOLOGRÁFICO */
+        #viewport {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            background: radial-gradient(circle at center, #060614 0%, #020205 100%);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* ÁREA DEL MAPA DE OPERACIONES (IZQUIERDA) */
+        #game-frame {
+            position: relative;
+            width: 500px;
+            height: 90vh;
+            max-height: 750px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas { 
+            display: block; 
+            width: 100%;
+            flex: 1;
+            border: 2px solid var(--mq-blue);
+            box-shadow: 0 0 30px rgba(0, 82, 255, 0.15), inset 0 0 20px rgba(0, 82, 255, 0.05);
+            background: #020206;
+            border-radius: 4px;
+        }
+
+        /* HUD HOLOGRÁFICO INTEGRADO */
         #hud {
-            position: absolute; inset: 0; pointer-events: none; padding: 20px;
+            position: absolute; inset: 0; pointer-events: none; padding: 15px;
             display: flex; flex-direction: column; justify-content: space-between;
         }
+
         .hud-glass {
-            background: rgba(0, 82, 255, 0.1); backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 82, 255, 0.4); padding: 12px;
-            clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
+            background: rgba(10, 10, 24, 0.85); backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 82, 255, 0.3); padding: 10px 15px;
+            border-radius: 2px;
         }
+
         .boss-warning {
-            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
-            color: var(--mq-red); font-size: 1.5rem; display: none; text-align: center;
-            text-shadow: 0 0 20px var(--mq-red); animation: blink 0.4s infinite;
+            position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%);
+            color: var(--mq-red); font-size: 1.3rem; display: none; text-align: center;
+            text-shadow: 0 0 20px var(--mq-red); font-weight: bold; animation: blink 0.4s infinite;
         }
-        @keyframes blink { 0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        /* BOTONES DE ACCIÓN */
-        .ctrl-group { display: flex; justify-content: space-around; pointer-events: auto; padding-bottom: 20px; gap: 10px; }
+        /* CONTROLES TÁCTILES / DE CLICK */
+        .ctrl-group { display: flex; justify-content: space-around; pointer-events: auto; padding: 10px 0; gap: 10px; }
         .btn-action {
-            width: 70px; height: 70px; border: 2px solid var(--mq-blue); border-radius: 15px;
+            width: 60px; height: 60px; border: 2px solid var(--mq-blue); border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(0, 82, 255, 0.1); color: white; font-size: 1.5rem;
-            transition: 0.1s;
+            background: rgba(0, 82, 255, 0.15); color: white; font-size: 1.2rem;
+            transition: 0.1s; cursor: pointer;
         }
-        .btn-action:active { background: var(--mq-blue); transform: scale(0.9); }
-        #fireBtn { border-color: var(--mq-red); color: var(--mq-red); box-shadow: 0 0 10px var(--mq-red); }
-        #dashBtn { border-color: var(--mq-gold); color: var(--mq-gold); box-shadow: 0 0 10px var(--mq-gold); }
+        .btn-action:active { background: var(--mq-blue); transform: scale(0.92); }
+        #fireBtn { border-color: var(--mq-red); color: var(--mq-red); box-shadow: 0 0 10px rgba(255,43,43,0.2); }
+        #dashBtn { border-color: var(--mq-gold); color: var(--mq-gold); box-shadow: 0 0 10px rgba(255,215,0,0.2); }
 
-        .modal {
-            position: absolute; inset: 0; background: rgba(2, 2, 5, 0.98);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 1000; text-align: center;
+        /* PANEL META-REDS (DERECHA) */
+        #meta-panel {
+            width: 320px;
+            height: 90vh;
+            max-height: 750px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
+
+        .avatar-box {
+            background: var(--surface); border: 1px solid var(--surface-brd);
+            padding: 15px; display: flex; align-items: center; gap: 15px; border-radius: 4px;
+        }
+
+        .avatar-vis {
+            width: 65px; height: 65px; border: 2px solid var(--mq-cyan); border-radius: 50%;
+            position: relative; display: flex; align-items: center; justify-content: center;
+            background: #04040a; box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
+        }
+
+        .avatar-pulse {
+            width: 42px; height: 42px; border: 2px dashed var(--mq-gold);
+            border-radius: 50%; animation: spin 10s linear infinite;
+        }
+
+        .avatar-core { position: absolute; width: 12px; height: 12px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px var(--mq-cyan); }
+        
+        /* Animación activa de habla */
+        .avatar-vis.talking .avatar-pulse { animation: spin 1.2s linear infinite, pulseScale 0.3s ease-in-out infinite alternate; border-color: var(--mq-red); }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulseScale { 0% { transform: scale(0.95); } 100% { transform: scale(1.15); } }
+
+        .terminal-users {
+            flex: 1; background: #030308; border: 1px solid var(--surface-brd);
+            padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden;
+            font-size: 11px; border-left: 3px solid var(--mq-blue); border-radius: 4px;
+        }
+
+        .terminal-title { color: var(--text-muted); font-size: 10px; border-bottom: 1px solid var(--surface-brd); padding-bottom: 4px; }
+        .log-line { line-height: 1.4; animation: fadeIn 0.2s ease-out; }
+        .log-user { color: var(--mq-gold); }
+        .log-action { color: #fff; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* MODALES DE ESTADO OVERLAY */
+        .modal {
+            position: absolute; inset: 0; background: rgba(2, 2, 5, 0.96);
+            backdrop-filter: blur(8px); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000; text-align: center;
+            border: 2px solid var(--mq-blue);
+        }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div id="viewport">
-    <canvas id="gameCanvas"></canvas>
     
-    <div id="hud">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div class="hud-glass" style="min-width: 150px;">
-                <small style="color: var(--mq-blue); font-size: 10px;">DATA_STREAM</small>
-                <div id="score" style="font-size: 1.5rem;">000000</div>
-                <small style="color: var(--mq-gold);">RECORD: <span id="hi-score">0</span></small>
-            </div>
-            <div id="boss-ui" style="display:none; width: 45%;" class="hud-glass">
-                <small style="color: var(--mq-red);">IA_BOSS_INTEGRITY</small>
-                <div style="height: 6px; background: #222; margin-top: 5px; border-radius: 3px;">
-                    <div id="boss-bar" style="height: 100%; background: var(--mq-red); width: 100%; transition: width 0.2s;"></div>
+    <div id="game-frame">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="hud">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div class="hud-glass" style="min-width: 140px; pointer-events: auto;">
+                    <small style="color: var(--mq-cyan); font-size: 9px; display:block; margin-bottom:2px;">SECTOR: <span id="lbl-sector">01</span></small>
+                    <div id="score" style="font-size: 1.3rem; font-weight: bold; color: #fff;">000000</div>
+                    <small style="color: var(--mq-gold); font-size: 10px;">HI-RES: <span id="hi-score">000000</span></small>
+                </div>
+                
+                <div id="boss-ui" style="display:none; width: 45%;" class="hud-glass">
+                    <small style="color: var(--mq-red); font-size: 9px; font-weight: bold;">FIREWALL_INTEGRITY</small>
+                    <div style="height: 6px; background: #111; margin-top: 5px; border-radius: 3px; overflow: hidden; border: 1px solid #222;">
+                        <div id="boss-bar" style="height: 100%; background: var(--mq-red); width: 100%;"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div id="alert" class="boss-warning">¡ADVERTENCIA!<br>FIREWALL_BOSS DETECTADO</div>
+            
+            <div id="alert" class="boss-warning">¡ADVERTENCIA!<br>IA_FIREWALL_BOSS FILTRADO</div>
 
-        <div class="ctrl-group">
-            <div id="leftBtn" class="btn-action"><i class="fas fa-arrow-left"></i></div>
-            <div id="fireBtn" class="btn-action" style="width: 85px; height: 85px;"><i class="fas fa-crosshairs"></i></div>
-            <div id="dashBtn" class="btn-action"><i class="fas fa-bolt"></i></div>
-            <div id="rightBtn" class="btn-action"><i class="fas fa-arrow-right"></i></div>
+            <div class="ctrl-group">
+                <div id="leftBtn" class="btn-action"><i class="fas fa-arrow-left"></i></div>
+                <div id="fireBtn" class="btn-action" style="width: 75px; height: 75px;"><i class="fas fa-crosshairs"></i></div>
+                <div id="dashBtn" class="btn-action"><i class="fas fa-bolt"></i></div>
+                <div id="rightBtn" class="btn-action"><i class="fas fa-arrow-right"></i></div>
+            </div>
+        </div>
+
+        <div id="start-screen" class="modal">
+            <h1 style="color: var(--mq-blue); letter-spacing: 8px; margin: 0; font-size: 2rem;">MAXIQUEEN OS</h1>
+            <p style="color: var(--mq-gold); font-size: 11px; margin: 5px 0 25px 0;">NEON_RUNNER : COMBAT_EDITION v4.0</p>
+            <button style="padding: 12px 35px; background: transparent; color: var(--mq-gold); border: 2px solid var(--mq-gold); font-family: inherit; font-weight:bold; cursor: pointer;" onclick="Game.boot()">BOOT_CORE</button>
         </div>
     </div>
 
-    <div id="start-screen" class="modal">
-        <h1 style="color: var(--mq-blue); letter-spacing: 10px; margin: 0;">MAXIQUEEN OS</h1>
-        <p style="color: var(--mq-gold); font-size: 12px; margin-bottom: 30px;">NEON_RUNNER : COMBAT_EDITION</p>
-        <button class="btn-mq" style="padding: 15px 40px; background: transparent; color: var(--mq-gold); border: 2px solid var(--mq-gold); font-family: 'Orbitron'; cursor: pointer;" onclick="Game.init()">BOOT_CORE</button>
+    <div id="meta-panel">
+        <div class="avatar-box">
+            <div class="avatar-vis" id="avatar-ui">
+                <div class="avatar-pulse"></div>
+                <div class="avatar-core"></div>
+            </div>
+            <div class="avatar-info">
+                <div class="avatar-name" style="font-size: 13px; font-weight:bold; color:#fff;">M.Q. CORE v4</div>
+                <div id="avatar-action" style="font-size: 9px; color: var(--mq-cyan); margin-top:3px;">SISTEMA EN ESPERA</div>
+            </div>
+        </div>
+
+        <div class="terminal-users">
+            <div class="terminal-title">TERMINAL CO-OP // AGENTES CONCURRENTES</div>
+            <div id="user-logs" style="display: flex; flex-direction: column; gap: 6px;">
+                </div>
+        </div>
     </div>
+
 </div>
 
 <script>
+/**
+ * REFACTOR: MAXIQUEEN NEON RUNNER v4.0 CO-OP ENGINE
+ * Native Architectural Client-Side Implementation
+ */
+
+// --- CONFIGURACIÓN ESTRUCTURAL DE 10 SECTORES DE COBERTURA ---
+const SECTOR_CONFIG = [
+    { lvl: 1, name: "ACCESO_RAÍZ",      target: 1500,  speedMultiplier: 1.0, spawnRate: 0.04 },
+    { lvl: 2, name: "CANAL_PERIMETRAL",  target: 3500,  speedMultiplier: 1.1, spawnRate: 0.05 },
+    { lvl: 3, name: "TÚNEL_CRIPTADO",    target: 6000,  speedMultiplier: 1.2, spawnRate: 0.05 },
+    { lvl: 4, name: "BÚFER_ASÍNCRONO",   target: 9000,  speedMultiplier: 1.3, spawnRate: 0.06 },
+    { lvl: 5, name: "MATRIZ_PROXIES",    target: 12500, speedMultiplier: 1.4, spawnRate: 0.06 },
+    { lvl: 6, name: "NÚCLEO_DE_DATOS",   target: 16000, speedMultiplier: 1.5, spawnRate: 0.07 },
+    { lvl: 7, name: "CORTAFUEGOS_SYNC",  target: 20000, speedMultiplier: 1.6, spawnRate: 0.07 },
+    { lvl: 8, name: "TRANSMISIÓN_MUTEX", target: 25000, speedMultiplier: 1.7, spawnRate: 0.08 },
+    { lvl: 9, name: "SEGMENTACIÓN_RAW",  target: 31000, speedMultiplier: 1.8, spawnRate: 0.08 },
+    { lvl: 10,name: "OMEGA_GATEWAY",     target: 40000, speedMultiplier: 2.0, spawnRate: 0.09 }
+];
+
+const AGENT_IDENTIFIERS = ["Alpha_Net", "Cesar_Julio", "Sis_Architecture", "Hyperion_UX", "Proxy_Lock", "Node_Master"];
+const AGENT_METRICS = [
+    "Sincronizando flujos de disparo paralelos.",
+    "Bypaseando inyección de código hostil.",
+    "Descargando segmentos en el buffer compartido.",
+    "Alerta: Densidad del Firewall enemiga crítica.",
+    "Estabilizando canal cuántico de ataque.",
+    "Enviando pulso de recarga al corredor."
+];
+
 const Game = {
     canvas: document.getElementById('gameCanvas'),
     ctx: null,
     active: false,
     score: 0,
-    hiScore: localStorage.getItem('mq_hi_score') || 0,
+    hiScore: localStorage.getItem('mq_runner_hi') || 0,
+    
+    sectorIndex: 0,
     bossActive: false,
     bossHp: 100,
+    bossX: 0,
     shake: 0,
+    
     particles: [],
-    bullets: [], // Balas del jugador
-    enemyBullets: [], // Balas del boss
+    bullets: [],
+    enemyBullets: [],
     obstacles: [],
 
-    player: { x: 0, y: 0, w: 45, h: 45, targetX: 0, dashCooldown: 0 },
+    player: { x: 0, y: 0, w: 40, h: 40, targetX: 0, dashCooldown: 0 },
+    
+    speechQueue: [],
+    isSpeaking: false,
 
-    init() {
+    // --- ENTORNO AUDIO ANALÓGICO SINTETIZADO ---
+    playAudioTone(freq, type = 'sine', duration = 0.1, vol = 0.04) {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    },
+
+    // --- MOTOR DE TELEMETRÍA POR VOZ ASÍNCRONA ---
+    speak(text, clearQueue = false) {
+        if (clearQueue) {
+            window.speechSynthesis.cancel();
+            this.speechQueue = [];
+            this.isSpeaking = false;
+        }
+        this.speechQueue.push(text);
+        this.processSpeechQueue();
+    },
+
+    processSpeechQueue() {
+        if (this.isSpeaking || this.speechQueue.length === 0) return;
+        if (!('speechSynthesis' in window)) return;
+
+        const nextText = this.speechQueue.shift();
+        const utterance = new SpeechSynthesisUtterance(nextText);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.3;
+        utterance.pitch = 0.95;
+
+        utterance.onstart = () => {
+            this.isSpeaking = true;
+            document.getElementById("avatar-ui").classList.add("talking");
+            document.getElementById("avatar-action").innerText = "ANALIZANDO BUFFER...";
+        };
+
+        utterance.onend = () => {
+            this.isSpeaking = false;
+            document.getElementById("avatar-ui").classList.remove("talking");
+            document.getElementById("avatar-action").innerText = "MONITORIZANDO FLUJO";
+            this.processSpeechQueue();
+        };
+
+        utterance.onerror = () => {
+            this.isSpeaking = false;
+            document.getElementById("avatar-ui").classList.remove("talking");
+            this.processSpeechQueue();
+        };
+
+        window.speechSynthesis.speak(utterance);
+    },
+
+    boot() {
         this.ctx = this.canvas.getContext('2d');
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        this.player.y = this.canvas.height - 180;
-        this.player.x = this.canvas.width / 2 - 22;
-        this.player.targetX = this.player.x;
-        
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
         document.getElementById('start-screen').style.display = 'none';
-        document.getElementById('hi-score').innerText = this.hiScore;
+        document.getElementById('hi-score').innerText = String(this.hiScore).padStart(6, '0');
+        
         this.active = true;
-        this.setupControls();
+        this.sectorIndex = 0;
+        this.score = 0;
+        
+        this.setupHardwareControls();
+        this.startNetworkSimulation();
+        
+        this.speak("Inicializando Núcleo Neon Runner versión 4. Modo combate enlazado. Cargando sector uno.", true);
+        this.loadSector(0);
         this.loop();
     },
 
-    setupControls() {
-        const move = (d) => this.player.targetX += d * 100;
+    resize() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
+        this.player.y = this.canvas.height - 120;
+        if(!this.player.x) this.player.x = this.canvas.width / 2 - 20;
+        this.player.targetX = this.player.x;
+    },
+
+    loadSector(idx) {
+        this.sectorIndex = idx;
+        const current = SECTOR_CONFIG[this.sectorIndex];
+        document.getElementById('lbl-sector').innerText = String(current.lvl).padStart(2, '0');
+        this.obstacles = [];
+        this.enemyBullets = [];
+        this.bossActive = false;
+        document.getElementById('boss-ui').style.display = 'none';
         
-        document.getElementById('leftBtn').onpointerdown = (e) => { e.preventDefault(); move(-1); };
-        document.getElementById('rightBtn').onpointerdown = (e) => { e.preventDefault(); move(1); };
+        if(idx > 0) {
+            this.speak(`Sector ${current.lvl} verificado. Nombre de red: ${current.name}. Incrementando ancho de banda.`);
+        }
+    },
+
+    setupHardwareControls() {
+        const offset = 80;
+        document.getElementById('leftBtn').onpointerdown = (e) => { e.preventDefault(); this.player.targetX -= offset; };
+        document.getElementById('rightBtn').onpointerdown = (e) => { e.preventDefault(); this.player.targetX += offset; };
         
         document.getElementById('fireBtn').onpointerdown = (e) => {
             e.preventDefault();
-            this.bullets.push({ x: this.player.x + 20, y: this.player.y, speed: 15 });
+            this.executeWeaponFire();
         };
 
         document.getElementById('dashBtn').onpointerdown = (e) => {
             e.preventDefault();
-            if(this.player.dashCooldown <= 0) {
-                let dir = (this.player.targetX > this.player.x) ? 1 : -1;
-                this.player.targetX += dir * 200;
-                this.player.dashCooldown = 30;
-                this.shake = 10;
-                this.createExplosion(this.player.x + 22, this.player.y + 22, '#FFD700');
-            }
+            this.executeDashPulse();
+        };
+
+        // Mapeo físico estándar de teclado + WASD
+        document.onkeydown = (e) => {
+            if(!this.active) return;
+            if(e.keyCode === 37 || e.keyCode === 65) this.player.targetX -= offset;
+            if(e.keyCode === 39 || e.keyCode === 68) this.player.targetX += offset;
+            if(e.keyCode === 32) this.executeWeaponFire(); // Barra Espaciadora
+            if(e.keyCode === 16) this.executeDashPulse();  // Shift
         };
     },
 
-    createExplosion(x, y, color) {
-        for(let i=0; i<10; i++) {
+    executeWeaponFire() {
+        this.bullets.push({ x: this.player.x + this.player.w/2 - 2, y: this.player.y, speed: 16 });
+        this.playAudioTone(440, 'triangle', 0.05, 0.03);
+    },
+
+    executeDashPulse() {
+        if(this.player.dashCooldown <= 0) {
+            let dir = (this.player.targetX > this.player.x) ? 1 : -1;
+            this.player.targetX += dir * 160;
+            this.player.dashCooldown = 25;
+            this.shake = 8;
+            this.createMatrixExplosion(this.player.x + this.player.w/2, this.player.y + this.player.h/2, '#FFD700');
+            this.playAudioTone(659.25, 'sine', 0.12, 0.05);
+        }
+    },
+
+    createMatrixExplosion(x, y, color) {
+        for(let i=0; i<12; i++) {
             this.particles.push({
                 x, y, 
-                vx: (Math.random()-0.5)*10, 
-                vy: (Math.random()-0.5)*10, 
+                vx: (Math.random()-0.5)*8, 
+                vy: (Math.random()-0.5)*8, 
                 life: 1.0, color
             });
         }
@@ -161,92 +414,119 @@ const Game = {
     update() {
         if(!this.active) return;
 
-        // Player move suavizado
-        this.player.x += (this.player.targetX - this.player.x) * 0.2;
-        this.player.x = Math.max(10, Math.min(this.canvas.width - 55, this.player.x));
+        const currentSector = SECTOR_CONFIG[this.sectorIndex];
+
+        // Suavizado cinemático lineal
+        this.player.x += (this.player.targetX - this.player.x) * 0.25;
+        this.player.x = Math.max(10, Math.min(this.canvas.width - this.player.w - 10, this.player.x));
         if(this.player.dashCooldown > 0) this.player.dashCooldown--;
 
-        // Boss Logic
-        if(this.score > 0 && this.score % 4000 < 30 && !this.bossActive) {
+        // Orquestación del Firewall Boss en base al Target del Sector
+        if(this.score > 0 && this.score >= currentSector.target && !this.bossActive) {
             this.bossActive = true;
             this.bossHp = 100;
+            this.bossX = this.canvas.width / 2 - 50;
             document.getElementById('alert').style.display = 'block';
             document.getElementById('boss-ui').style.display = 'block';
+            document.getElementById('boss-bar').style.width = '100%';
+            this.speak(`Advertencia. Cortafuegos hostil detectado en sector ${currentSector.lvl}. Ejecutando maniobras de mitigación.`, true);
             setTimeout(() => document.getElementById('alert').style.display = 'none', 3000);
         }
 
         if(this.bossActive) {
-            let bx = (this.canvas.width/2) + Math.sin(Date.now()/400) * (this.canvas.width/3);
-            if(Math.random() < 0.08) this.enemyBullets.push({ x: bx + 50, y: 120, r: 10, speed: 8 });
+            this.bossX = (this.canvas.width/2 - 50) + Math.sin(Date.now() / 350) * (this.canvas.width / 2.5 - 60);
             
-            // Colisión balas jugador -> Boss
+            // Frecuencia adaptativa de ataque del Boss
+            if(Math.random() < 0.05 * currentSector.speedMultiplier) {
+                this.enemyBullets.push({ x: this.bossX + 20, y: 110, w: 6, h: 14, speed: 7 * currentSector.speedMultiplier });
+                this.enemyBullets.push({ x: this.bossX + 80, y: 110, w: 6, h: 14, speed: 7 * currentSector.speedMultiplier });
+            }
+
+            // Impacto balas jugador -> Boss
             this.bullets.forEach((b, bi) => {
-                if(b.y < 150 && b.x > bx && b.x < bx + 100) {
-                    this.bossHp -= 2;
+                if(b.y < 120 && b.x > this.bossX && b.x < this.bossX + 100) {
+                    this.bossHp -= 4;
                     this.bullets.splice(bi, 1);
-                    this.createExplosion(b.x, b.y, '#FF2B2B');
-                    this.shake = 5;
+                    this.createMatrixExplosion(b.x, b.y, '#FF2B2B');
+                    this.shake = 6;
+                    this.playAudioTone(220, 'sawtooth', 0.06, 0.04);
                     document.getElementById('boss-bar').style.width = this.bossHp + '%';
                 }
             });
 
             if(this.bossHp <= 0) {
-                this.bossActive = false;
-                this.score += 5000;
-                document.getElementById('boss-ui').style.display = 'none';
-                this.createExplosion(bx + 50, 100, '#FFD700');
+                this.createMatrixExplosion(this.bossX + 50, 80, '#FFD700');
+                this.playAudioTone(880, 'square', 0.4, 0.08);
+                this.score += 2000;
+                
+                if(this.sectorIndex >= SECTOR_CONFIG.length - 1) {
+                    this.active = false;
+                    this.speak("Atención. Todos los sectores han sido liberados de forma absoluta. MaxiQueen O S se encuentra a salvo.", true);
+                    alert("PROCESO FINALIZADO CON ÉXITO: TODOS LOS NODOS PURIFICADOS.");
+                    location.reload();
+                    return;
+                } else {
+                    this.sectorIndex++;
+                    this.loadSector(this.sectorIndex);
+                }
             }
         }
 
-        // Balas Jugador
+        // Proyección Balas Jugador
         this.bullets.forEach((b, i) => {
             b.y -= b.speed;
             if(b.y < 0) this.bullets.splice(i, 1);
         });
 
-        // Obstáculos y Colisiones
-        if(!this.bossActive && Math.random() < 0.06) {
-            this.obstacles.push({ x: Math.random()*(this.canvas.width-60), y: -50, w: 60, h: 25, hp: 1 });
+        // Despliegue Procedural de Amenazas Estáticas
+        if(!this.bossActive && Math.random() < currentSector.spawnRate) {
+            this.obstacles.push({
+                x: Math.random() * (this.canvas.width - 70),
+                y: -40,
+                w: 65,
+                h: 22
+            });
         }
 
         this.obstacles.forEach((ob, i) => {
-            ob.y += 7 + (this.score/5000);
+            ob.y += 6 * currentSector.speedMultiplier;
             
-            // Jugador choca con obstáculo
-            if(this.checkRect(this.player, ob)) this.gameOver();
+            // Colisión directa -> Game Over
+            if(this.checkIntersection(this.player, ob)) this.executeCrashSequence();
 
-            // Bala destruye obstáculo
+            // Interceptación de balística
             this.bullets.forEach((b, bi) => {
-                if(this.checkRect({x:b.x, y:b.y, w:5, h:10}, ob)) {
-                    this.createExplosion(ob.x + 30, ob.y + 12, '#0052FF');
+                if(this.checkIntersection({x: b.x, y: b.y, w: 4, h: 15}, ob)) {
+                    this.createMatrixExplosion(ob.x + ob.w/2, ob.y + ob.h/2, '#0052FF');
                     this.obstacles.splice(i, 1);
                     this.bullets.splice(bi, 1);
-                    this.score += 200;
+                    this.score += 150;
+                    this.playAudioTone(330, 'triangle', 0.05, 0.03);
                 }
             });
 
             if(ob.y > this.canvas.height) this.obstacles.splice(i, 1);
         });
 
-        // Balas Enemigas
+        // Balística Enemiga (Boss)
         this.enemyBullets.forEach((eb, i) => {
             eb.y += eb.speed;
-            if(Math.hypot(this.player.x+22-eb.x, this.player.y+22-eb.y) < 30) this.gameOver();
+            if(this.checkIntersection(this.player, eb)) this.executeCrashSequence();
             if(eb.y > this.canvas.height) this.enemyBullets.splice(i, 1);
         });
 
-        // Partículas
+        // Partículas Dinámicas
         this.particles.forEach((p, i) => {
             p.x += p.vx; p.y += p.vy; p.life -= 0.03;
             if(p.life <= 0) this.particles.splice(i, 1);
         });
 
-        this.score++;
+        this.score += 2;
         document.getElementById('score').innerText = String(this.score).padStart(6, '0');
         if(this.shake > 0) this.shake--;
     },
 
-    checkRect(r1, r2) {
+    checkIntersection(r1, r2) {
         return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
     },
 
@@ -255,47 +535,62 @@ const Game = {
         ctx.save();
         if(this.shake > 0) ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
         
-        // Limpieza con trail
-        ctx.fillStyle = 'rgba(2, 2, 5, 0.3)';
+        // Efecto barrido persistente (Motion Trail)
+        ctx.fillStyle = 'rgba(2, 2, 5, 0.25)';
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Grid
-        ctx.strokeStyle = 'rgba(0, 82, 255, 0.05)';
+        // Retícula Vectorial Estética
+        ctx.strokeStyle = 'rgba(0, 82, 255, 0.03)';
+        ctx.lineWidth = 1;
         for(let i=0; i<this.canvas.width; i+=40) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, this.canvas.height); ctx.stroke();
         }
 
-        // Balas Jugador
-        ctx.fillStyle = '#FFD700';
+        // Balas Aliadas
+        ctx.fillStyle = varColor('--mq-cyan');
         this.bullets.forEach(b => ctx.fillRect(b.x, b.y, 4, 15));
 
-        // Obstáculos
-        ctx.fillStyle = '#0052FF';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#0052FF';
-        this.obstacles.forEach(ob => ctx.fillRect(ob.x, ob.y, ob.w, ob.h));
+        // Obstáculos de Datos
+        ctx.fillStyle = 'rgba(0, 82, 255, 0.2)';
+        ctx.strokeStyle = varColor('--mq-blue');
+        ctx.lineWidth = 2;
+        this.obstacles.forEach(ob => {
+            ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+            ctx.strokeRect(ob.x + 2, ob.y + 2, ob.w - 4, ob.h - 4);
+        });
 
-        // Jugador
-        ctx.fillStyle = '#00f2ff';
-        ctx.shadowBlur = 20; ctx.shadowColor = '#00f2ff';
+        // Elemento Corredor (Player)
+        ctx.fillStyle = '#ffffff';
+        ctx.save();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = varColor('--mq-cyan');
         ctx.fillRect(this.player.x, this.player.y, this.player.w, this.player.h);
+        ctx.restore();
 
-        // Boss
+        // Renderizado Firewall Boss
         if(this.bossActive) {
-            let bx = (this.canvas.width/2) + Math.sin(Date.now()/400) * (this.canvas.width/3);
-            ctx.fillStyle = '#FF2B2B';
-            ctx.shadowColor = '#FF2B2B';
-            ctx.fillRect(bx, 80, 100, 45);
-            // Cañones del boss
-            ctx.fillRect(bx+10, 125, 20, 15);
-            ctx.fillRect(bx+70, 125, 20, 15);
+            ctx.fillStyle = 'rgba(255, 43, 43, 0.3)';
+            ctx.strokeStyle = varColor('--mq-red');
+            ctx.lineWidth = 3;
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = varColor('--mq-red');
+            ctx.fillRect(this.bossX, 60, 100, 40);
+            ctx.strokeRect(this.bossX, 60, 100, 40);
             
-            ctx.fillStyle = '#FF2B2B';
+            // Torretas del Sistema
+            ctx.fillStyle = varColor('--mq-red');
+            ctx.fillRect(this.bossX + 15, 100, 12, 10);
+            ctx.fillRect(this.bossX + 73, 100, 12, 10);
+            ctx.restore();
+            
+            // Proyectiles de Bloqueo
             this.enemyBullets.forEach(eb => {
-                ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillRect(eb.x, eb.y, eb.w, eb.h);
             });
         }
 
-        // Partículas
+        // Flujo de Partículas
         this.particles.forEach(p => {
             ctx.globalAlpha = p.life;
             ctx.fillStyle = p.color;
@@ -305,19 +600,48 @@ const Game = {
         ctx.restore();
     },
 
-    gameOver() {
+    executeCrashSequence() {
         this.active = false;
-        if(this.score > this.hiScore) localStorage.setItem('mq_hi_score', this.score);
-        this.shake = 30;
-        setTimeout(() => location.reload(), 1000);
+        this.playAudioTone(80, 'sawtooth', 0.5, 0.15);
+        this.speak("Fallo crítico en el corredor. Colisión de vectores detectada. Reiniciando secuencia.", true);
+        
+        if(this.score > this.hiScore) {
+            localStorage.setItem('mq_runner_hi', this.score);
+        }
+        
+        this.shake = 25;
+        setTimeout(() => location.reload(), 1500);
     },
 
     loop() {
+        if(!this.active) return;
         this.update();
         this.draw();
-        if(this.active) requestAnimationFrame(() => this.loop());
+        requestAnimationFrame(() => this.loop());
+    },
+
+    // --- LOG CIBERNÉTICO CO-OP CONCURRENTES ---
+    startNetworkSimulation() {
+        const pane = document.getElementById("user-logs");
+        setInterval(() => {
+            if (!this.active) return;
+            const agent = AGENT_IDENTIFIERS[Math.floor(Math.random() * AGENT_IDENTIFIERS.length)];
+            const log = AGENT_METRICS[Math.floor(Math.random() * AGENT_METRICS.length)];
+            
+            const element = document.createElement("div");
+            element.className = "log-line";
+            element.innerHTML = `[<span class="log-user">${agent}</span>]: <span class="log-action">${log}</span>`;
+            
+            pane.appendChild(element);
+            if (pane.children.length > 10) pane.removeChild(pane.children[0]);
+            this.playAudioTone(1100, 'sine', 0.01, 0.003);
+        }, 4000);
     }
 };
+
+function varColor(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 </script>
 </body>
 </html>

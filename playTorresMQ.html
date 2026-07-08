@@ -2,14 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEURAL NEXUS: GLOBAL OVERRIDE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAXIQUEEN OS - NEURAL NEXUS: GLOBAL OVERRIDE</title>
     <style>
         :root {
             --neon-blue: #00f3ff;
             --neon-purple: #bc13fe;
             --neon-red: #ff003c;
+            --mq-yellow: #FFD700;
             --bg-dark: #050508;
+            --zinc-900: #0c0c0e;
         }
 
         body, html {
@@ -17,9 +19,11 @@
             width: 100%; height: 100%;
             overflow: hidden;
             background-color: var(--bg-dark);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             color: white;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
         }
 
         #game-container {
@@ -28,9 +32,9 @@
             display: flex; justify-content: center; align-items: center;
         }
 
-        canvas {
+        canvas#mainCanvas {
             display: block;
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            background-color: #06060a;
         }
 
         /* --- UI OVERLAYS --- */
@@ -40,52 +44,60 @@
             width: 100%; height: 100%;
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            background: rgba(5, 5, 8, 0.85);
-            backdrop-filter: blur(10px);
+            background: rgba(5, 5, 8, 0.9);
+            backdrop-filter: blur(12px);
             z-index: 100;
-            transition: opacity 0.5s;
+            transition: opacity 0.4s ease;
         }
 
         .hidden { opacity: 0; pointer-events: none; }
 
         .menu-card {
-            background: rgba(20, 20, 30, 0.9);
+            background: rgba(12, 12, 16, 0.95);
             border: 2px solid var(--neon-blue);
             padding: 40px;
             text-align: center;
-            box-shadow: 0 0 30px var(--neon-blue);
-            clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
-            min-width: 400px;
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.25);
+            clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+            min-width: 320px;
+            max-width: 450px;
         }
 
         h1 {
-            font-size: 3rem;
-            margin: 0;
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
             text-transform: uppercase;
-            letter-spacing: 5px;
+            letter-spacing: 4px;
+            color: #fff;
+            font-weight: 900;
+        }
+        
+        h1 span {
             color: var(--neon-blue);
-            text-shadow: 0 0 10px var(--neon-blue);
+            text-shadow: 0 0 15px var(--neon-blue);
         }
 
         .btn {
             background: transparent;
             border: 1px solid var(--neon-blue);
             color: var(--neon-blue);
-            padding: 15px 40px;
-            margin: 20px 0;
-            font-size: 1.2rem;
+            padding: 14px 30px;
+            margin: 12px 0;
+            font-size: 1rem;
+            font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            transition: all 0.3s;
+            letter-spacing: 2px;
+            transition: all 0.2s ease;
             display: block;
             width: 100%;
+            box-sizing: border-box;
         }
 
         .btn:hover {
             background: var(--neon-blue);
             color: black;
-            box-shadow: 0 0 20px var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.6);
         }
 
         #hud {
@@ -93,13 +105,22 @@
             top: 20px; left: 20px;
             pointer-events: none;
             z-index: 50;
+            font-family: monospace;
         }
 
         .stat-box {
-            background: rgba(0, 243, 255, 0.1);
-            border-left: 5px solid var(--neon-blue);
-            padding: 10px 20px;
-            margin-bottom: 10px;
+            background: rgba(0, 243, 255, 0.04);
+            border-left: 4px solid var(--neon-blue);
+            padding: 8px 16px;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            backdrop-filter: blur(4px);
+        }
+        
+        .stat-box span {
+            font-weight: bold;
+            color: #fff;
         }
 
         #ability-bar {
@@ -108,33 +129,63 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 20px;
+            gap: 16px;
             pointer-events: auto;
             z-index: 60;
+            background: rgba(0,0,0,0.4);
+            padding: 10px 20px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
         .ability {
-            width: 60px; height: 60px;
-            border: 2px solid #555;
-            background: rgba(0,0,0,0.5);
-            display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 0.8rem;
+            width: 56px; height: 56px;
+            border: 2px solid #333;
+            background: #0f0f14;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            font-weight: 900; font-size: 0.75rem;
             cursor: pointer;
             position: relative;
+            font-family: monospace;
+            border-radius: 8px;
+            overflow: hidden;
+            color: #666;
+            transition: border-color 0.2s, color 0.2s;
         }
 
-        .ability.ready { border-color: var(--neon-blue); color: var(--neon-blue); }
+        .ability.ready { 
+            border-color: var(--neon-blue); 
+            color: var(--neon-blue); 
+            box-shadow: 0 0 10px rgba(0,243,255,0.15);
+        }
+        
+        .ability .cost-tag {
+            font-size: 0.6rem;
+            color: #a1a1aa;
+            margin-top: 2px;
+        }
+
         .ability .cooldown-overlay {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
-            background: rgba(0, 243, 255, 0.3);
+            background: rgba(0, 243, 255, 0.25);
+            transition: height 0.1s linear;
         }
 
         #minimap-container {
             position: absolute;
             bottom: 20px; right: 20px;
-            width: 200px; height: 200px;
-            border: 1px solid var(--neon-blue);
-            background: rgba(0,0,0,0.7);
+            width: 160px; height: 160px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(5, 5, 8, 0.85);
+            z-index: 60;
+            border-radius: 8px;
+            overflow: hidden;
+            backdrop-filter: blur(6px);
+        }
+        
+        canvas#minimapCanvas {
+            width: 100%; height: 100%;
         }
     </style>
 </head>
@@ -142,89 +193,127 @@
 
 <div id="game-container">
     <div id="hud">
-        <div class="stat-box">NEXUS STATUS: <span id="hp-val">100%</span></div>
-        <div class="stat-box">ENERGY: <span id="energy-val">0</span></div>
-        <div class="stat-box">NODES CONTROLLED: <span id="node-count">1</span></div>
+        <div class="stat-box">NEXUS STATUS: <span id="hp-val">STANDBY</span></div>
+        <div class="stat-box">ENERGY MATRIX: <span id="energy-val">0</span></div>
+        <div class="stat-box">NODES SECURED: <span id="node-count">0</span></div>
     </div>
 
     <div id="ability-bar">
-        <div class="ability" id="skill-1" title="EMP Blast (E)">EMP<div class="cooldown-overlay"></div></div>
-        <div class="ability" id="skill-2" title="Overclock (R)">OVC<div class="cooldown-overlay"></div></div>
-        <div class="ability" id="skill-3" title="Shield (Q)">SHD<div class="cooldown-overlay"></div></div>
+        <div class="ability" id="skill-1" onclick="game.useAbility(1)">
+            <span>EMP</span><span class="cost-tag">40 E</span>
+            <div class="cooldown-overlay" id="cd-1"></div>
+        </div>
+        <div class="ability" id="skill-2" onclick="game.useAbility(2)">
+            <span>OVC</span><span class="cost-tag">60 E</span>
+            <div class="cooldown-overlay" id="cd-2"></div>
+        </div>
+        <div class="ability" id="skill-3" onclick="game.useAbility(3)">
+            <span>SHD</span><span class="cost-tag">50 E</span>
+            <div class="cooldown-overlay" id="cd-3"></div>
+        </div>
     </div>
 
     <div id="minimap-container">
-        <canvas id="minimapCanvas" width="200" height="200"></canvas>
+        <canvas id="minimapCanvas" width="160" height="160"></canvas>
     </div>
 
     <canvas id="mainCanvas"></canvas>
 
     <div id="main-menu" class="overlay">
         <div class="menu-card">
-            <h1>NEURAL NEXUS</h1>
-            <p>CONQUISTA LA RED GLOBAL</p>
-            <button class="btn" onclick="game.start()">INICIAR PROTOCOLO</button>
-            <button class="btn" onclick="game.showStats()">ESTADÍSTICAS</button>
+            <h1>NEURAL <span>NEXUS</span></h1>
+            <p style="color: #a1a1aa; font-size: 0.9rem; margin-top:-5px; margin-bottom: 25px; letter-spacing: 1px;">MAXIQUEEN OS SUB-ENGINE v2</p>
+            <button class="btn" onclick="game.start()">Iniciar Protocolo</button>
         </div>
     </div>
 
     <div id="game-over" class="overlay hidden">
-        <div class="menu-card" style="border-color: var(--neon-red); box-shadow: 0 0 30px var(--neon-red);">
+        <div class="menu-card" style="border-color: var(--neon-red); box-shadow: 0 0 40px rgba(255,0,60,0.35);">
             <h1 style="color: var(--neon-red);">CONEXIÓN PERDIDA</h1>
-            <p id="final-stats">Nodos capturados: 0</p>
-            <button class="btn" onclick="location.reload()">REINTENTAR</button>
+            <p id="final-stats" style="margin: 15px 0; color: #e4e4e7; font-family: monospace;"></p>
+            <button class="btn" style="border-color: var(--neon-red); color: var(--neon-red);" onclick="location.reload()">Reconfigurar Red</button>
         </div>
     </div>
 </div>
 
 <script>
 /**
- * ARCHITECTURE: NEURAL NEXUS ENGINE
- * Professional Game Development Pattern
+ * ARCHITECTURE: MAXIQUEEN NEURAL NEXUS ENGINE v2
+ * High-Performance Native Real-Time Strategy Pattern
  */
 
 const CONFIG = {
     NODE_TYPES: { NEUTRAL: 0, PLAYER: 1, ENEMY: 2 },
-    COLORS: { 0: '#555555', 1: '#00f3ff', 2: '#ff003c' },
-    PACKET_SPEED: 180,
-    ENERGY_GAIN: 1,
-    MAX_NODES: 15
+    COLORS: { 0: '#3f3f46', 1: '#00f3ff', 2: '#ff003c' },
+    PACKET_SPEED: 210,
+    ENERGY_GAIN: 3.5, // Unidades de energía por segundo
+    MAX_NODES: 14
 };
 
-// --- AUDIO SYSTEM (Web Audio API) ---
+// --- AUDIO SYNTHESIS SYSTEM (Web Audio API) ---
 class AudioManager {
     constructor() {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.ctx = null;
     }
 
-    playSfx(freq, type = 'sine', duration = 0.1, volume = 0.1) {
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    playSfx(freq, type = 'sine', duration = 0.1, volume = 0.1, freqEnd = null) {
+        this.init();
         if (this.ctx.state === 'suspended') this.ctx.resume();
+        
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = type;
+        
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        if (freqEnd) {
+            osc.frequency.exponentialRampToValueAtTime(freqEnd, this.ctx.currentTime + duration);
+        }
+        
         gain.gain.setValueAtTime(volume, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+        
         osc.connect(gain);
         gain.connect(this.ctx.destination);
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
     }
 
-    playCapture() { this.playSfx(440, 'square', 0.2); this.playSfx(880, 'square', 0.3); }
-    playShoot() { this.playSfx(150, 'sawtooth', 0.1, 0.05); }
-    playExplosion() { this.playSfx(60, 'triangle', 0.5, 0.2); }
+    playSelection() { this.playSfx(587.33, 'sine', 0.06, 0.08); }
+    playCapture() { this.playSfx(440, 'square', 0.15, 0.1, 880); }
+    playShoot() { this.playSfx(220, 'sawtooth', 0.08, 0.04, 80); }
+    playExplosion() { this.playSfx(90, 'triangle', 0.6, 0.25, 30); }
+    playSkill() { this.playSfx(349.23, 'sine', 0.3, 0.15, 698.46); }
 }
 
-// --- PARTICLE SYSTEM ---
+// --- VOICE MANAGER (Web Speech API) ---
+class VoiceManager {
+    speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.15;
+            utterance.pitch = 0.95;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+}
+
+// --- SYSTEM PARTICLE MATRIX ---
 class Particle {
     constructor(x, y, color) {
         this.x = x; this.y = y;
         this.color = color;
-        this.vx = (Math.random() - 0.5) * 10;
-        this.vy = (Math.random() - 0.5) * 10;
+        this.vx = (Math.random() - 0.5) * 8;
+        this.vy = (Math.random() - 0.5) * 8;
         this.life = 1.0;
-        this.decay = 0.02 + Math.random() * 0.02;
+        this.decay = 0.025 + Math.random() * 0.02;
     }
     update(dt) {
         this.x += this.vx * dt * 60;
@@ -232,69 +321,94 @@ class Particle {
         this.life -= this.decay;
     }
     draw(ctx) {
+        ctx.save();
         ctx.globalAlpha = this.life;
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, 3, 3);
-        ctx.globalAlpha = 1;
+        ctx.fillRect(this.x, this.y, 2.5, 2.5);
+        ctx.restore();
     }
 }
 
-// --- ENTITIES ---
+// --- NODE NODE GRAPH COMPONENT ---
 class Node {
     constructor(id, x, y, owner = 0) {
         this.id = id;
         this.x = x; this.y = y;
         this.owner = owner;
-        this.strength = owner === 0 ? 10 : 20;
+        this.strength = owner === 0 ? 12 : 25;
         this.maxStrength = 100;
-        this.radius = 30;
-        this.growthRate = 1.5; // Unidades por segundo
+        this.radius = 26;
+        this.growthRate = 2.0; 
         this.selected = false;
-        this.pulse = 0;
+        this.pulse = Math.random() * 10;
+        this.shieldTimer = 0; // Buffer de protección activa
     }
 
-    update(dt) {
-        if (this.owner !== CONFIG.NODE_TYPES.NEUTRAL) {
-            this.strength = Math.min(this.maxStrength, this.strength + this.growthRate * dt);
-        }
+    update(dt, modifiers) {
         this.pulse += dt * 3;
+        
+        if (this.shieldTimer > 0) this.shieldTimer -= dt;
+
+        if (this.owner !== CONFIG.NODE_TYPES.NEUTRAL) {
+            let currentGrowth = this.growthRate;
+            // Modificador avanzado: Overclock activo para jugador
+            if (this.owner === CONFIG.NODE_TYPES.PLAYER && modifiers.overclock > 0) {
+                currentGrowth *= 3.0;
+            }
+            this.strength = Math.min(this.maxStrength, this.strength + currentGrowth * dt);
+        }
     }
 
     draw(ctx) {
         const color = CONFIG.COLORS[this.owner];
         ctx.save();
         
-        // Glow effect
-        ctx.shadowBlur = 15 + Math.sin(this.pulse) * 5;
+        // Renderizado del Glow perimetral
+        ctx.shadowBlur = 14 + Math.sin(this.pulse) * 4;
         ctx.shadowColor = color;
         
-        // Main circle
+        // Anillo Maestro Exteriorme
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
+        ctx.shadowBlur = 0; // Apagar efectos pesados para primitivas internas
 
-        // Fill based on strength
+        // Relleno incremental proporcional a capacidad
         ctx.beginPath();
-        const fillRad = (this.strength / this.maxStrength) * this.radius;
+        const fillRad = Math.max(2, (this.strength / this.maxStrength) * (this.radius - 4));
         ctx.arc(this.x, this.y, fillRad, 0, Math.PI * 2);
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.25;
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Label
-        ctx.fillStyle = "#fff";
-        ctx.font = "12px monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(Math.floor(this.strength), this.x, this.y + 5);
+        // Renderizado de Escudo Activo
+        if (this.shieldTimer > 0) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
+            ctx.strokeStyle = '#bc13fe';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 2]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
 
+        // Métrica Numérica Interna
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(Math.floor(this.strength), this.x, this.y);
+
+        // Feedback de Selección de Entrada
         if (this.selected) {
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2);
-            ctx.setLineDash([5, 5]);
-            ctx.strokeStyle = "#fff";
+            ctx.arc(this.x, this.y, this.radius + 8, 0, Math.PI * 2);
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 4]);
             ctx.stroke();
         }
 
@@ -302,6 +416,7 @@ class Node {
     }
 }
 
+// --- DATA PACKETS TRAFFIC CONTROLLER ---
 class Packet {
     constructor(fromNode, toNode, owner, amount) {
         this.x = fromNode.x;
@@ -317,9 +432,9 @@ class Packet {
     update(dt) {
         const dx = this.target.x - this.x;
         const dy = this.target.y - this.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = Math.hypot(dx, dy);
         
-        if (dist < 5) {
+        if (dist < 6) {
             this.arrive();
             return;
         }
@@ -330,44 +445,80 @@ class Packet {
 
     arrive() {
         this.finished = true;
+        
         if (this.target.owner === this.owner) {
+            // Refuerzo de nodo aliado
             this.target.strength += this.amount;
         } else {
-            this.target.strength -= this.amount;
+            // Mitigación por escudo táctico
+            if (this.target.shieldTimer > 0) {
+                this.target.strength -= (this.amount * 0.3); // Absorbe 70% del daño
+            } else {
+                this.target.strength -= this.amount;
+            }
+
+            // Captura de Nodo realizada
             if (this.target.strength <= 0) {
+                const oldOwner = this.target.owner;
                 this.target.owner = this.owner;
                 this.target.strength = Math.abs(this.target.strength);
+                this.target.selected = false;
+                
                 game.audio.playCapture();
                 game.spawnParticles(this.target.x, this.target.y, this.color);
-                game.shake = 10;
+                game.shake = 12;
+
+                // Orquestación de logs de voz contextuales
+                if (this.owner === CONFIG.NODE_TYPES.PLAYER) {
+                    game.voice.speak("Nodo asegurado. Ancho de banda expandido.");
+                } else if (oldOwner === CONFIG.NODE_TYPES.PLAYER) {
+                    game.voice.speak("Alerta: Intrusión detectada. Nodo comprometido.");
+                }
             }
         }
     }
 
     draw(ctx) {
+        ctx.save();
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 8;
         ctx.shadowColor = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
     }
 }
 
-// --- GAME ENGINE ---
+// --- CORE INDUSTRIAL GAME ENGINE ---
 class Engine {
     constructor() {
         this.canvas = document.getElementById('mainCanvas');
         this.ctx = this.canvas.getContext('2d');
+        
+        this.mCanvas = document.getElementById('minimapCanvas');
+        this.mCtx = this.mCanvas.getContext('2d');
+
         this.audio = new AudioManager();
+        this.voice = new VoiceManager();
+        
         this.nodes = [];
         this.packets = [];
         this.particles = [];
+        
         this.selection = null;
         this.shake = 0;
         this.energy = 0;
         this.lastTime = 0;
         this.running = false;
+
+        // Estructuras extendidas de control de habilidades
+        this.modifiers = { overclock: 0 };
+        this.skills = {
+            1: { name: "EMP", cost: 40, cd: 12, currentCd: 0 },
+            2: { name: "OVC", cost: 60, cd: 18, currentCd: 0 },
+            3: { name: "SHD", cost: 50, cd: 15, currentCd: 0 }
+        };
         
         this.setupEvents();
         window.addEventListener('resize', () => this.resize());
@@ -380,157 +531,262 @@ class Engine {
     }
 
     setupEvents() {
-        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        // Soporte unificado Mouse / Touch para entornos híbridos
+        const handleInputStart = (e) => {
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            if(clientX && clientY) this.handleInteraction(clientX, clientY);
+        };
+
+        this.canvas.addEventListener('mousedown', handleInputStart);
+        this.canvas.addEventListener('touchstart', (e) => {
+            // Permitir flujo táctil sin bloqueos nativos de scroll
+            if(this.running) e.preventDefault(); 
+            handleInputStart(e);
+        }, { passive: false });
+
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'e') this.useAbility(1);
-            if (e.key === 'r') this.useAbility(2);
-            if (e.key === 'q') this.useAbility(3);
+            if (e.key.toLowerCase() === 'e' || e.key === '1') this.useAbility(1);
+            if (e.key.toLowerCase() === 'r' || e.key === '2') this.useAbility(2);
+            if (e.key.toLowerCase() === 'q' || e.key === '3') this.useAbility(3);
         });
     }
 
     start() {
+        this.audio.init();
         document.getElementById('main-menu').classList.add('hidden');
         this.initLevel();
         this.running = true;
         this.lastTime = performance.now();
+        
+        this.voice.speak("Mapeo topológico completado. Neural Nexus en línea.");
         requestAnimationFrame((t) => this.loop(t));
     }
 
     initLevel() {
         this.nodes = [];
         this.packets = [];
-        // Generate nodes
-        const margin = 100;
-        // Player Base
-        this.nodes.push(new Node(0, margin, this.canvas.height/2, CONFIG.NODE_TYPES.PLAYER));
-        // Enemy Base
-        this.nodes.push(new Node(1, this.canvas.width - margin, this.canvas.height/2, CONFIG.NODE_TYPES.ENEMY));
+        this.particles = [];
+        this.energy = 10; 
         
-        // Random Neutral Nodes
-        for(let i = 2; i < CONFIG.MAX_NODES; i++) {
-            let x, y, tooClose;
+        const padding = 120;
+        
+        // Gateway de Jugador (Izquierda)
+        this.nodes.push(new Node(0, padding, this.canvas.height / 2, CONFIG.NODE_TYPES.PLAYER));
+        // Mainframe Enemigo (Derecha)
+        this.nodes.push(new Node(1, this.canvas.width - padding, this.canvas.height / 2, CONFIG.NODE_TYPES.ENEMY));
+        
+        // Generación Algorítmica Masiva de Nodos Distribuidos
+        for (let i = 2; i < CONFIG.MAX_NODES; i++) {
+            let x, y, invalid;
+            let safetyCounter = 0;
             do {
-                tooClose = false;
-                x = margin + Math.random() * (this.canvas.width - margin * 2);
-                y = margin + Math.random() * (this.canvas.height - margin * 2);
-                for(let n of this.nodes) {
-                    if(Math.hypot(x-n.x, y-n.y) < 120) tooClose = true;
+                invalid = false;
+                x = padding + Math.random() * (this.canvas.width - padding * 2);
+                y = padding + Math.random() * (this.canvas.height - padding * 2);
+                
+                // Evitar superposición espacial estricta
+                for (let n of this.nodes) {
+                    if (Math.hypot(x - n.x, y - n.y) < 115) invalid = true;
                 }
-            } while(tooClose);
+                safetyCounter++;
+            } while (invalid && safetyCounter < 100);
+            
             this.nodes.push(new Node(i, x, y, CONFIG.NODE_TYPES.NEUTRAL));
         }
     }
 
-    handleClick(e) {
-        const x = e.clientX;
-        const y = e.clientY;
-        
-        let clickedNode = null;
-        for(let n of this.nodes) {
-            if(Math.hypot(x - n.x, y - n.y) < n.radius) {
-                clickedNode = n;
+    handleInteraction(clientX, clientY) {
+        if (!this.running) return;
+
+        let targetNode = null;
+        for (let n of this.nodes) {
+            if (Math.hypot(clientX - n.x, clientY - n.y) < n.radius + 10) {
+                targetNode = n;
                 break;
             }
         }
 
-        if(clickedNode) {
-            if(clickedNode.owner === CONFIG.NODE_TYPES.PLAYER) {
-                if(this.selection) this.selection.selected = false;
-                this.selection = clickedNode;
-                clickedNode.selected = true;
-                this.audio.playSfx(600, 'sine', 0.05);
-            } else if(this.selection) {
-                // Send troops
-                this.sendPackets(this.selection, clickedNode);
+        if (targetNode) {
+            if (targetNode.owner === CONFIG.NODE_TYPES.PLAYER) {
+                if (this.selection) this.selection.selected = false;
+                this.selection = targetNode;
+                targetNode.selected = true;
+                this.audio.playSelection();
+            } else if (this.selection) {
+                // Lanzamiento de ráfaga de datos tácticos hacia objetivo
+                this.launchPackets(this.selection, targetNode);
                 this.selection.selected = false;
                 this.selection = null;
             }
         } else {
-            if(this.selection) this.selection.selected = false;
+            if (this.selection) this.selection.selected = false;
             this.selection = null;
         }
     }
 
-    sendPackets(from, to) {
-        if(from.strength < 2) return;
-        const amount = Math.floor(from.strength / 2);
-        from.strength -= amount;
-        this.packets.push(new Packet(from, to, from.owner, amount));
+    launchPackets(from, to) {
+        if (from.strength < 3) return;
+        const totalToDeploy = Math.floor(from.strength / 2);
+        from.strength -= totalToDeploy;
+        
+        this.packets.push(new Packet(from, to, from.owner, totalToDeploy));
         this.audio.playShoot();
     }
 
     spawnParticles(x, y, color) {
-        for(let i=0; i<15; i++) this.particles.push(new Particle(x, y, color));
+        for (let i = 0; i < 12; i++) this.particles.push(new Particle(x, y, color));
     }
 
     useAbility(id) {
-        // Simple placeholder for professional ability system
-        if(this.energy > 50) {
-            this.energy -= 50;
-            this.shake = 20;
-            this.audio.playExplosion();
-            // EMP logic: half all enemy strengths
-            if(id === 1) {
+        const skill = this.skills[id];
+        if (!skill || !this.running) return;
+
+        if (this.energy >= skill.cost && skill.currentCd <= 0) {
+            this.energy -= skill.cost;
+            skill.currentCd = skill.cd;
+            this.shake = 18;
+            this.audio.playSkill();
+
+            if (id === 1) {
+                // EMP Blast: Debilita nodos enemigos mitigando su fuerza a la mitad
+                this.voice.speak("Pulso electromagnético propagado.");
                 this.nodes.forEach(n => {
-                    if(n.owner === CONFIG.NODE_TYPES.ENEMY) n.strength /= 2;
+                    if (n.owner === CONFIG.NODE_TYPES.ENEMY) {
+                        n.strength = Math.max(1, n.strength / 2);
+                        this.spawnParticles(n.x, n.y, CONFIG.COLORS[2]);
+                    }
+                });
+            } else if (id === 2) {
+                // Overclock Matrix: Multiplica ratio de auto-generación por 5 segundos
+                this.voice.speak("Sobrerreloj de procesamiento activado.");
+                this.modifiers.overclock = 5.0; 
+            } else if (id === 3) {
+                // Shield Deploy: Genera capa defensiva en todos los nodos del jugador
+                this.voice.speak("Cortafuegos de red desplegado.");
+                this.nodes.forEach(n => {
+                    if (n.owner === CONFIG.NODE_TYPES.PLAYER) n.shieldTimer = 6.0;
                 });
             }
+        } else {
+            this.audio.playSfx(140, 'sine', 0.1, 0.05); // Sonido denegado
         }
     }
 
-    enemyAI(dt) {
-        // Advanced AI Logic: Find weakest neighbor or player node
+    enemyAICore(dt) {
+        // Rediseño de Inteligencia Artificial Reactiva de Proximidad
         const enemyNodes = this.nodes.filter(n => n.owner === CONFIG.NODE_TYPES.ENEMY);
         enemyNodes.forEach(en => {
-            if(en.strength > 40 && Math.random() < 0.01) {
-                const targets = this.nodes.filter(n => n.owner !== CONFIG.NODE_TYPES.ENEMY);
-                if(targets.length > 0) {
-                    targets.sort((a, b) => Math.hypot(en.x-a.x, en.y-a.y) - Math.hypot(en.x-b.x, en.y-b.y));
-                    this.sendPackets(en, targets[0]);
+            if (en.strength > 35 && Math.random() < 0.008) {
+                const potentialTargets = this.nodes.filter(n => n.owner !== CONFIG.NODE_TYPES.ENEMY);
+                if (potentialTargets.length > 0) {
+                    // Ordenar por cercanía geométrica euclidiana para asaltos lógicos
+                    potentialTargets.sort((a, b) => Math.hypot(en.x - a.x, en.y - a.y) - Math.hypot(en.x - b.x, en.y - b.y));
+                    this.launchPackets(en, potentialTargets[0]);
                 }
             }
         });
     }
 
     update(dt) {
-        this.nodes.forEach(n => n.update(dt));
-        this.packets.forEach((p, i) => {
-            p.update(dt);
-            if(p.finished) this.packets.splice(i, 1);
-        });
-        this.particles.forEach((p, i) => {
-            p.update(dt);
-            if(p.life <= 0) this.particles.splice(i, 1);
-        });
-
-        this.enemyAI(dt);
-        this.energy += CONFIG.ENERGY_GAIN * dt;
+        // Gestión de timers globales de habilidades
+        if (this.modifiers.overclock > 0) this.modifiers.overclock -= dt;
         
-        if(this.shake > 0) this.shake *= 0.9;
+        for (let key in this.skills) {
+            if (this.skills[key].currentCd > 0) {
+                this.skills[key].currentCd = Math.max(0, this.skills[key].currentCd - dt);
+            }
+        }
 
-        // Update HUD
+        // Actualización procedural de elementos dinámicos
+        this.nodes.forEach(n => n.update(dt, this.modifiers));
+
+        // Corregido bug estructural: Iteración reversa segura para evitar saltos de índice en memoria
+        for (let i = this.packets.length - 1; i >= 0; i--) {
+            this.packets[i].update(dt);
+            if (this.packets[i].finished) {
+                this.packets.splice(i, 1);
+            }
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            this.particles[i].update(dt);
+            if (this.particles[i].life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+
+        this.enemyAICore(dt);
+        
+        // Factor de energía progresivo continuo
+        this.energy += CONFIG.ENERGY_GAIN * dt;
+        if (this.shake > 0) this.shake *= 0.88;
+
+        // Actualización asíncrona de datos en HUD
         const playerNodes = this.nodes.filter(n => n.owner === CONFIG.NODE_TYPES.PLAYER);
-        document.getElementById('hp-val').innerText = playerNodes.length > 0 ? "ESTABLE" : "FALLO";
+        const enemyNodes = this.nodes.filter(n => n.owner === CONFIG.NODE_TYPES.ENEMY);
+        
+        document.getElementById('hp-val').innerText = playerNodes.length > 0 ? "ESTABLE" : "TERMINADO";
         document.getElementById('energy-val').innerText = Math.floor(this.energy);
         document.getElementById('node-count').innerText = playerNodes.length;
 
-        if(playerNodes.length === 0) this.gameOver();
+        // Render y Refresco UI Cooldowns
+        for (let i = 1; i <= 3; i++) {
+            const btn = document.getElementById(`skill-${i}`);
+            const overlay = document.getElementById(`cd-${i}`);
+            const sk = this.skills[i];
+            
+            const pct = (sk.currentCd / sk.cd) * 100;
+            overlay.style.height = `${pct}%`;
+
+            if (this.energy >= sk.cost && sk.currentCd <= 0) {
+                btn.classList.add('ready');
+            } else {
+                btn.classList.remove('ready');
+            }
+        }
+
+        // Evaluación de Condiciones de victoria o colapso
+        if (playerNodes.length === 0) {
+            this.triggerGameOver("CRÍTICO: Red controlada por la IA.");
+        } else if (enemyNodes.length === 0) {
+            this.triggerGameOver("ÉXITO: Infraestructura global purgada.");
+        }
     }
 
-    gameOver() {
+    triggerGameOver(msg) {
         this.running = false;
+        this.audio.playExplosion();
+        this.voice.speak("Protocolo finalizado. Estado de conexión: Terminado.");
         document.getElementById('game-over').classList.remove('hidden');
-        document.getElementById('final-stats').innerText = `Nodos perdidos ante la IA. Conexión terminada.`;
+        document.getElementById('final-stats').innerText = msg;
     }
 
     loop(now) {
-        if(!this.running) return;
-        const dt = (now - this.lastTime) / 1000;
+        if (!this.running) return;
+        const dt = Math.min(0.1, (now - this.lastTime) / 1000); // Clamping para prevenir saltos macro si se minimiza la pestaña
         this.lastTime = now;
 
         this.update(dt);
         this.draw();
+        this.drawMinimap();
         requestAnimationFrame((t) => this.loop(t));
+    }
+
+    drawMinimap() {
+        // Redibujo analítico del minimapa
+        this.mCtx.fillStyle = "rgba(5, 5, 8, 1)";
+        this.mCtx.fillRect(0, 0, this.mCanvas.width, this.mCanvas.height);
+
+        const scaleX = this.mCanvas.width / this.canvas.width;
+        const scaleY = this.mCanvas.height / this.canvas.height;
+
+        this.nodes.forEach(n => {
+            this.mCtx.beginPath();
+            this.mCtx.arc(n.x * scaleX, n.y * scaleY, 4, 0, Math.PI * 2);
+            this.mCtx.fillStyle = CONFIG.COLORS[n.owner];
+            this.mCtx.fill();
+        });
     }
 
     draw() {
@@ -539,24 +795,28 @@ class Engine {
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         ctx.save();
-        if(this.shake > 0) {
-            ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        // Efecto sísmico de pantalla ante colisiones o habilidades
+        if (this.shake > 0) {
+            ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
         }
 
-        // Draw Links
-        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        // Trazado de Enlaces Estructurales de Fondo
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
         ctx.lineWidth = 1;
-        this.nodes.forEach(n1 => {
-            this.nodes.forEach(n2 => {
-                if(n1.id < n2.id && Math.hypot(n1.x-n2.x, n1.y-n2.y) < 300) {
+        for (let i = 0; i < this.nodes.length; i++) {
+            for (let j = i + 1; j < this.nodes.length; j++) {
+                const n1 = this.nodes[i];
+                const n2 = this.nodes[j];
+                if (Math.hypot(n1.x - n2.x, n1.y - n2.y) < 280) {
                     ctx.beginPath();
                     ctx.moveTo(n1.x, n1.y);
                     ctx.lineTo(n2.x, n2.y);
                     ctx.stroke();
                 }
-            });
-        });
+            }
+        }
 
+        // Render de Entidades Autónomas
         this.nodes.forEach(n => n.draw(ctx));
         this.packets.forEach(p => p.draw(ctx));
         this.particles.forEach(p => p.draw(ctx));
@@ -565,7 +825,7 @@ class Engine {
     }
 }
 
-// Bootstrap
+// Bootstrap Initialization
 const game = new Engine();
 </script>
 </body>
