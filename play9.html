@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MaxiQueen OS - Cyber Threat Interceptor</title>
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #39ff14;
+            --neon-red: #ff3131;
+            --ui-bg: rgba(10, 25, 41, 0.9);
+            --border-color: #1a3a4a;
+        }
+        body { 
+            margin: 0; 
+            background: #040814; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            color: var(--neon-blue);
+            user-select: none;
+            touch-action: none;
+        }
+        #game-container { 
+            position: relative; 
+            width: 800px; 
+            height: 600px; 
+            border: 2px solid var(--border-color); 
+            box-shadow: 0 0 30px rgba(0,242,255,0.12);
+            background: radial-gradient(circle at center, #0a192f 0%, #020c1b 100%);
+        }
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            cursor: crosshair;
+        }
+
+        /* HUD Paneles */
+        .hud-panel {
+            position: absolute; 
+            padding: 12px 18px; 
+            background: var(--ui-bg);
+            border: 1px solid var(--neon-blue); 
+            border-radius: 6px; 
+            pointer-events: none;
+            box-shadow: inset 0 0 15px rgba(0,242,255,0.05);
+        }
+        #stats-panel { top: 20px; left: 20px; width: 240px; }
+        #integrity-panel { top: 20px; right: 20px; display: flex; align-items: center; gap: 6px; }
+        
+        .stat-line { margin: 4px 0; font-size: 0.9rem; font-weight: bold; }
+        .battery { width: 14px; height: 24px; border: 2px solid var(--neon-blue); position: relative; border-radius: 2px; }
+        .battery.active { background: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
+        .battery.warning { border-color: var(--neon-red); }
+        .battery.warning.active { background: var(--neon-red); box-shadow: 0 0 8px var(--neon-red); }
+
+        /* Controles de Voz Interactivos */
+        #voice-controls {
+            position: absolute;
+            top: 140px;
+            right: 20px;
+            pointer-events: auto;
+        }
+        .voice-btn {
+            background: rgba(255, 0, 255, 0.1);
+            border: 1px solid var(--neon-pink);
+            color: var(--neon-pink);
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .voice-btn:hover {
+            background: var(--neon-pink);
+            color: #000;
+            box-shadow: 0 0 12px var(--neon-pink);
+        }
+
+        /* Pantallas de Estado Overlays */
+        .screen-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 12, 27, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .screen-title {
+            font-size: 2.4rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 25px rgba(0,242,255,0.25);
+            font-weight: bold;
+            text-align: center;
+        }
+        .screen-desc { color: #8892b0; font-size: 0.95rem; margin-bottom: 24px; text-align: center; max-width: 400px; line-height: 1.4; }
+        
+        .action-btn {
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 12px 32px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            letter-spacing: 1px;
+        }
+        .action-btn:hover {
+            background: var(--neon-blue);
+            color: #020c1b;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="stats-panel" class="hud-panel">
+        <div id="hud-sector" style="font-size: 0.8em; color: var(--neon-pink); font-weight: bold; letter-spacing: 1px;">SECTOR 1: PUERTO DE ENTRADA</div>
+        <div class="stat-line" id="hud-score">NÚCLEOS PURGADOS: 0 / 10</div>
+        <div class="stat-line" id="hud-time">TIEMPO CRÍTICO: 15.0s</div>
+        <div class="stat-line" id="hud-combo" style="color: var(--neon-green); display: none;">COMBO X1</div>
+    </div>
+
+    <div id="integrity-panel" class="hud-panel">
+        <div style="font-size: 0.7rem; font-weight: bold; margin-right: 6px;">INTEGRIDAD:</div>
+        <div class="battery active"></div>
+        <div class="battery active"></div>
+        <div class="battery active"></div>
+    </div>
+
+    <div id="voice-controls">
+        <button class="voice-btn" onclick="firewallVoiceAudit()">🎙️ DIAGNÓSTICO DE VOZ</button>
+    </div>
+
+    <div id="start-screen" class="screen-overlay">
+        <div class="screen-title">INTERCEPTOR DE AMENAZAS</div>
+        <div class="screen-desc">Neutraliza los vectores de código malicioso antes de que el tiempo expire o la integridad del firewall colapse por completo. Evita los nodos corruptos de color rojo.</div>
+        <button class="action-btn" onclick="initializeInterception()">INICIAR PURGA</button>
+    </div>
+
+    <div id="next-sector-screen" class="screen-overlay" style="display: none;">
+        <div class="screen-title" id="sector-clear-title">SECTOR DEPURADO</div>
+        <div class="screen-desc">Paquetes limpios consolidados. El cortafuegos requiere elevación de privilegios para el siguiente nodo del microcontrolador.</div>
+        <button class="action-btn" onclick="loadNextSector()">CORTAR SIGUIENTE FILTRO</button>
+    </div>
+
+    <div id="gameover-screen" class="screen-overlay" style="display: none;">
+        <div class="screen-title" style="color: var(--neon-red);">MAINFRAME COMPROMETIDO</div>
+        <div class="screen-desc">Inyección de malware exitosa por parte del agente externo. El núcleo de MaxiQueen OS requiere un restablecimiento inmediato del sistema de protección.</div>
+        <button class="action-btn" onclick="rebootFirewallSystem()">REINICIAR BACKUP</button>
+    </div>
+
+    <div id="victory-screen" class="screen-overlay" style="display: none;">
+        <div class="screen-title">RED COMPLETAMENTE CONFIGURADA</div>
+        <div class="screen-desc">Excelente trabajo operacional. Todos los sectores de amenazas han sido mitigados y devueltos a la estabilidad nativa de MaxiQueen OS.</div>
+        <button class="action-btn" onclick="rebootFirewallSystem()">VOLVER A CORRER DIAGNÓSTICO</button>
+    </div>
+
+    <canvas id="threatCanvas"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById("threatCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = 800; canvas.height = 600;
+
+    // Configuración Completa de Sectores (Niveles)
+    const sectorLevels = {
+        1: {
+            name: "SECTOR 1: PUERTO DE ENTRADA",
+            targetScore: 10,
+            baseSpeed: 1.8,
+            timeAvailable: 15,
+            spawnCount: 3,
+            allowGlitch: false
+        },
+        2: {
+            name: "SECTOR 2: BASE DE DATOS CIFRADA",
+            targetScore: 15,
+            baseSpeed: 3.2,
+            timeAvailable: 18,
+            spawnCount: 4,
+            allowGlitch: true
+        },
+        3: {
+            name: "SECTOR 3: COMPILADOR CUÁNTICO",
+            targetScore: 20,
+            baseSpeed: 5.0,
+            timeAvailable: 20,
+            spawnCount: 5,
+            allowGlitch: true
+        }
+    };
+
+    let currentSectorIndex = 1;
+    let score = 0;
+    let timeLeft = 0;
+    let integrity = 3;
+    let gameMode = 'MENU'; // MENU, PLAYING, ENDED
+    let comboCount = 0;
+    let comboMultiplier = 1;
+    let lastTime = 0;
+
+    let targetNodes = [];
+    let standardParticles = [];
+
+    // MOTOR INTELIGENTE DE AUDIO SINTETIZADO LOCAL
+    function speakSystemOS(msg) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(msg);
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.1;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function firewallVoiceAudit() {
+        let currentConf = sectorLevels[currentSectorIndex];
+        let missing = currentConf.targetScore - score;
+        let healthPct = Math.round((integrity / 3) * 100);
+        let auditMsg = `Estado del Firewall MaxiQueen OS. Corriendo en el ${currentConf.name}. Faltan ${missing} anomalías por neutralizar. Integridad estructural al ${healthPct} por ciento.`;
+        speakSystemOS(auditMsg);
+    }
+
+    // Generar Nodos de Amenaza Dinámicos
+    function createTargetNode(forceType = null) {
+        const conf = sectorLevels[currentSectorIndex];
+        let type = 'STANDARD'; // Por defecto azul neón
+        
+        if (forceType) {
+            type = forceType;
+        } else {
+            let rand = Math.random();
+            if (conf.allowGlitch && rand < 0.25) {
+                type = 'GLITCH'; // Peligro rojo
+            } else if (rand > 0.90) {
+                type = 'OVERCLOCK'; // Bono dorado rara vez
+            }
+        }
+
+        // Definir radios y velocidades según el tipo de nodo
+        let radius = type === 'OVERCLOCK' ? 14 : (type === 'GLITCH' ? 22 : 20);
+        
+        // Ángulo aleatorio de movimiento
+        let angle = Math.random() * Math.PI * 2;
+        let speed = conf.baseSpeed * (type === 'OVERCLOCK' ? 1.4 : 1.0);
+
+        return {
+            x: Math.random() * (canvas.width - radius * 4) + radius * 2,
+            y: Math.random() * (canvas.height - radius * 4) + radius * 2,
+            radius: radius,
+            type: type,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            pulse: 0
+        };
+    }
+
+    function initSector(sectorNum) {
+        currentSectorIndex = sectorNum;
+        const config = sectorLevels[sectorNum];
+        score = 0;
+        timeLeft = config.timeAvailable;
+        comboCount = 0;
+        comboMultiplier = 1;
+
+        document.getElementById("hud-sector").innerText = config.name;
+        document.getElementById("hud-score").innerText = `NÚCLEOS PURGADOS: 0 / ${config.targetScore}`;
+        document.getElementById("hud-combo").style.display = "none";
+
+        // Inicializar conjunto de nodos
+        targetNodes = [];
+        for (let i = 0; i < config.spawnCount; i++) {
+            targetNodes.push(createTargetNode(i === 0 ? 'STANDARD' : null)); 
+        }
+        standardParticles = [];
+    }
+
+    // Controladores de Flujos Operativos
+    function initializeInterception() {
+        document.getElementById("start-screen").style.display = "none";
+        gameMode = 'PLAYING';
+        integrity = 3;
+        updateIntegrityHUD();
+        initSector(1);
+        lastTime = performance.now();
+        speakSystemOS("Sistema de defensa de red iniciado. Purgando el sector uno.");
+    }
+
+    function loadNextSector() {
+        document.getElementById("next-sector-screen").style.display = "none";
+        gameMode = 'PLAYING';
+        initSector(currentSectorIndex + 1);
+        lastTime = performance.now();
+    }
+
+    function rebootFirewallSystem() {
+        document.getElementById("gameover-screen").style.display = "none";
+        document.getElementById("victory-screen").style.display = "none";
+        
+        integrity = 3;
+        updateIntegrityHUD();
+        gameMode = 'PLAYING';
+        initSector(1);
+        lastTime = performance.now();
+        speakSystemOS("Reinicio del cortafuegos completo. Restaurando bases de datos estables.");
+    }
+
+    function updateIntegrityHUD() {
+        const batteries = document.querySelectorAll(".battery");
+        batteries.forEach((b, idx) => {
+            b.classList.remove("warning");
+            if (idx < integrity) {
+                b.classList.add("active");
+            } else {
+                b.classList.remove("active");
+            }
+        });
+    }
+
+    // Registro de Impactos y Taps (Soporta Mouse y Touch de Celular sin bugs)
+    function handleInterceptionInput(clientX, clientY) {
+        if (gameMode !== 'PLAYING') return;
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const clickX = (clientX - rect.left) * scaleX;
+        const clickY = (clientY - rect.top) * scaleY;
+
+        let nodeHit = false;
+
+        for (let i = targetNodes.length - 1; i >= 0; i--) {
+            let n = targetNodes[i];
+            let dist = Math.hypot(clickX - n.x, clickY - n.y);
+
+            if (dist < n.radius + 8) { // Rango de colisión generoso para comodidad en pantallas móviles
+                nodeHit = true;
+                targetNodes.splice(i, 1); // Remover nodo destruido
+                processNodeDestruction(n);
+                break;
+            }
+        }
+
+        if (!nodeHit) {
+            // Error en la intercepción: Rompe el combo
+            if (comboCount > 0) {
+                comboCount = 0;
+                comboMultiplier = 1;
+                document.getElementById("hud-combo").style.display = "none";
+            }
+        }
+    }
+
+    function processNodeDestruction(node) {
+        createExplosionParticles(node.x, node.y, node.type);
+        const conf = sectorLevels[currentSectorIndex];
+
+        if (node.type === 'GLITCH') {
+            // El usuario tocó un archivo corrupto malicioso
+            integrity--;
+            updateIntegrityHUD();
+            comboCount = 0;
+            comboMultiplier = 1;
+            document.getElementById("hud-combo").style.display = "none";
+
+            if (integrity <= 0) {
+                triggerGameOver("Integridad crítica comprometida.");
+            } else {
+                speakSystemOS("Advertencia. Infección de red detectada.");
+            }
+        } else {
+            // Nodos Correctos
+            comboCount++;
+            if (comboCount >= 12) comboMultiplier = 4;
+            else if (comboCount >= 7) comboMultiplier = 3;
+            else if (comboCount >= 3) comboMultiplier = 2;
+
+            if (comboCount >= 3) {
+                let comboHUD = document.getElementById("hud-combo");
+                comboHUD.innerText = `COMBO X${comboMultiplier} (${comboCount})`;
+                comboHUD.style.display = "block";
+                if (comboCount % 5 === 0) {
+                    speakSystemOS(`Racha combo por ${comboMultiplier}`);
+                }
+            }
+
+            // Asignación de Puntos de Purga
+            let pointsGained = node.type === 'OVERCLOCK' ? 3 : 1;
+            score += pointsGained * comboMultiplier;
+
+            if (node.type === 'OVERCLOCK') {
+                timeLeft = Math.min(conf.timeAvailable, timeLeft + 4); // Bono de tiempo
+                speakSystemOS("Paquete overclock sincronizado.");
+            }
+
+            document.getElementById("hud-score").innerText = `NÚCLEOS PURGADOS: ${score} / ${conf.targetScore}`;
+
+            // Validar si el nivel actual fue completado con éxito
+            if (score >= conf.targetScore) {
+                evaluateSectorProgression();
+                return;
+            }
+        }
+
+        // Repoblar la matriz para mantener el flujo constante de amenazas flotantes
+        while (targetNodes.length < conf.spawnCount) {
+            targetNodes.push(createTargetNode());
+        }
+    }
+
+    function evaluateSectorProgression() {
+        if (sectorLevels[currentSectorIndex + 1]) {
+            gameMode = 'ENDED';
+            document.getElementById("sector-clear-title").innerText = `SECTOR ${currentSectorIndex} DEPURADO`;
+            document.getElementById("next-sector-screen").style.display = "flex";
+            speakSystemOS(`Sector ${currentSectorIndex} limpio. Preparando siguiente filtro de protección.`);
+        } else {
+            gameMode = 'ENDED';
+            document.getElementById("victory-screen").style.display = "flex";
+            speakSystemOS("Felicidades. El cortafuegos global de MaxiQueen OS está plenamente operativo.");
+        }
+    }
+
+    function triggerGameOver(reasonText) {
+        gameMode = 'ENDED';
+        document.getElementById("gameover-screen").style.display = "flex";
+        speakSystemOS("Falla crítica. Seguridad comprometida. " + reasonText);
+    }
+
+    // Efectos de partículas para Feedback Visual Premium
+    function createExplosionParticles(x, y, type) {
+        let color = "#00f2ff";
+        if (type === 'GLITCH') color = "#ff3131";
+        if (type === 'OVERCLOCK') color = "#39ff14";
+
+        for (let i = 0; i < 12; i++) {
+            let angle = Math.random() * Math.PI * 2;
+            let speed = Math.random() * 3 + 2;
+            standardParticles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: Math.random() * 3 + 1,
+                alpha: 1,
+                color: color
+            });
+        }
+    }
+
+    // Eventos Vinculados (Mouse + Táctil Acode/Móvil)
+    canvas.addEventListener("mousedown", e => handleInterceptionInput(e.clientX, e.clientY));
+    canvas.addEventListener("touchstart", e => {
+        if(e.touches.length > 0) {
+            handleInterceptionInput(e.touches[0].clientX, e.touches[0].clientY);
+        }
+    }, { passive: true });
+
+    // Bucle de Simulación de Física y Actualización Gráfica
+    function gameLoop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        let elapsed = (timestamp - lastTime) / 1000;
+        lastTime = timestamp;
+
+        if (gameMode === 'PLAYING') {
+            timeLeft -= elapsed;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                triggerGameOver("Tiempo de procesamiento expirado.");
+            }
+            document.getElementById("hud-time").innerText = `TIEMPO CRÍTICO: ${timeLeft.toFixed(1)}s`;
+            
+            // Poner las alertas de las baterías en rojo si el tiempo baja de 5 segundos
+            const batteries = document.querySelectorAll(".battery");
+            batteries.forEach(b => {
+                if (timeLeft < 5) b.classList.add("warning");
+                else b.classList.remove("warning");
+            });
+        }
+
+        // Limpiar pantalla
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Actualizar y Renderizar Nodos de Amenazas
+        if (gameMode === 'PLAYING') {
+            targetNodes.forEach(n => {
+                n.x += n.vx;
+                n.y += n.vy;
+                n.pulse += 0.07;
+
+                // Colisiones de rebote contra bordes del canvas
+                if (n.x - n.radius < 0 || n.x + n.radius > canvas.width) n.vx *= -1;
+                if (n.y - n.radius < 0 || n.y + n.radius > canvas.height) n.vy *= -1;
+
+                // Dibujar Estilos de Neón por Nodo
+                ctx.beginPath();
+                let displayRadius = n.radius + Math.sin(n.pulse) * 2;
+                ctx.arc(n.x, n.y, displayRadius, 0, Math.PI * 2);
+                
+                if (n.type === 'GLITCH') {
+                    ctx.fillStyle = "rgba(255, 49, 49, 0.2)";
+                    ctx.strokeStyle = "#ff3131";
+                } else if (n.type === 'OVERCLOCK') {
+                    ctx.fillStyle = "rgba(57, 255, 20, 0.25)";
+                    ctx.strokeStyle = "#39ff14";
+                } else {
+                    ctx.fillStyle = "rgba(0, 242, 255, 0.15)";
+                    ctx.strokeStyle = "#00f2ff";
+                }
+                
+                ctx.lineWidth = 3;
+                ctx.fill();
+                ctx.stroke();
+
+                // Núcleo central del nodo
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+            });
+        }
+
+        // Simulación y Dibujo de Partículas
+        for (let i = standardParticles.length - 1; i >= 0; i--) {
+            let p = standardParticles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 0.03;
+
+            if (p.alpha <= 0) {
+                standardParticles.splice(i, 1);
+                continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Inicialización y Carga de Voces del Sistema Web Speech API
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+    }
+
+    requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

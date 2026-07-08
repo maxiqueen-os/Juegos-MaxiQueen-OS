@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAXIQUEEN OS - Cyber Defense Elite</title>
+<style>
+    :root {
+        --bg-dark: #05050a;
+        --panel-bg: #0d0d1f;
+        --primary: #bc13fe;
+        --secondary: #00f0ff;
+        --accent: #ff007f;
+        --text: #e0e0ff;
+    }
+
+    body {
+        margin: 0;
+        background: var(--bg-dark);
+        color: var(--text);
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    h2 {
+        margin: 10px 0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px var(--primary);
+    }
+
+    .game-container {
+        display: flex;
+        gap: 20px;
+        max-width: 900px;
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+    @media (max-width: 768px) {
+        .game-container {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+
+    canvas {
+        background: #020205;
+        border: 3px solid var(--primary);
+        box-shadow: 0 0 20px rgba(188, 19, 254, 0.3);
+        border-radius: 8px;
+        cursor: crosshair;
+    }
+
+    .sidebar {
+        flex: 1;
+        background: var(--panel-bg);
+        border: 2px solid #1f1f45;
+        border-radius: 8px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        min-width: 280px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        background: #080815;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #252550;
+    }
+
+    .stat-box {
+        font-size: 14px;
+    }
+    .stat-box span {
+        display: block;
+        font-weight: bold;
+        font-size: 18px;
+        color: var(--secondary);
+    }
+
+    .avatar-panel {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(188, 19, 254, 0.1);
+        border: 1px solid var(--primary);
+        padding: 10px;
+        border-radius: 6px;
+    }
+
+    #avatarCanvas {
+        background: #000;
+        border-radius: 50%;
+        border: 2px solid var(--secondary);
+    }
+
+    .avatar-text {
+        font-size: 13px;
+        font-style: italic;
+        color: #a0a0d0;
+    }
+
+    .shop-title {
+        font-size: 14px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 5px 0 0 0;
+        letter-spacing: 1px;
+    }
+
+    .tower-btn {
+        background: #151535;
+        border: 1px solid var(--secondary);
+        color: white;
+        padding: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.2s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tower-btn:hover:not(:disabled) {
+        background: var(--secondary);
+        color: black;
+        box-shadow: 0 0 10px var(--secondary);
+    }
+
+    .tower-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        border-color: #333;
+    }
+
+    .tower-btn.selected {
+        border-color: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+        background: #251025;
+    }
+
+    .btn-info {
+        font-size: 11px;
+        opacity: 0.8;
+    }
+
+    #startBtn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        text-transform: uppercase;
+        box-shadow: 0 0 15px var(--primary);
+    }
+    #startBtn:hover {
+        filter: brightness(1.2);
+    }
+</style>
+</head>
+<body>
+
+<h2>MAXIQUEEN OS - Defensa del Sistema v2.0</h2>
+
+<div class="game-container">
+    <!-- Lienzo de Juego -->
+    <canvas id="gameCanvas" width="450" height="600"></canvas>
+
+    <!-- Panel de Control Lateral -->
+    <div class="sidebar">
+        <!-- Avatar Inteligente -->
+        <div class="avatar-panel">
+            <canvas id="avatarCanvas" width="60" height="60"></canvas>
+            <div class="avatar-text">
+                <strong style="color: var(--secondary); display:block;">MAXI IA</strong>
+                <span id="maxiSubtitle">Esperando órdenes...</span>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats-grid">
+            <div class="stat-box">Nivel: <span id="lblLevel">1 / 10</span></div>
+            <div class="stat-box">Núcleos (Vidas): <span id="lblLives" style="color:var(--accent)">10</span></div>
+            <div class="stat-box">Créditos: <span id="lblGold">250</span></div>
+            <div class="stat-box">Score: <span id="lblScore">0</span></div>
+        </div>
+
+        <!-- Tienda de Defensas -->
+        <div class="shop-title">Módulos de Seguridad</div>
+        <button class="tower-btn selected" id="btn-LASER" onclick="selectTower('LASER')">
+            <div>
+                <strong>Láser de Red</strong><br>
+                <span class="btn-info">Rápido | Daño Leve</span>
+            </div>
+            <span>$100</span>
+        </button>
+        <button class="tower-btn" id="btn-PLASMA" onclick="selectTower('PLASMA')">
+            <div>
+                <strong>Cortafuegos</strong><br>
+                <span class="btn-info">Área | Daño Crítico</span>
+            </div>
+            <span>$225</span>
+        </button>
+        <button class="tower-btn" id="btn-EMP" onclick="selectTower('EMP')">
+            <div>
+                <strong>Parche EMP</strong><br>
+                <span class="btn-info">Ralentiza Malware</span>
+            </div>
+            <span>$150</span>
+        </button>
+
+        <button id="startBtn" onclick="triggerNextWave()">Iniciar Oleada</button>
+    </div>
+</div>
+
+<script>
+// --- Configuración e Inicialización de Canvas ---
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const avCanvas = document.getElementById("avatarCanvas");
+const avCtx = avCanvas.getContext("2d");
+
+// --- Estado Global del Juego ---
+let state = {
+    level: 1,
+    maxLevels: 10,
+    gold: 250,
+    lives: 10,
+    score: 0,
+    selectedTowerType: 'LASER',
+    waveInProgress: false,
+    enemiesLeftInWave: 0,
+    gameOver: false
+};
+
+// Tipos de Torres Disponibles
+const TOWER_TYPES = {
+    LASER: { cost: 100, range: 130, damage: 4, cooldown: 300, color: '#00f0ff', name: 'Láser' },
+    PLASMA: { cost: 225, range: 160, damage: 35, cooldown: 1200, color: '#bc13fe', name: 'Cortafuegos' },
+    EMP: { cost: 150, range: 100, damage: 1, cooldown: 600, color: '#ff007f', isEmp: true, name: 'Parche EMP' }
+};
+
+// Tipos de Enemigos
+const ENEMY_TYPES = {
+    TROJAN: { hp: 40, speed: 1.2, size: 12, color: '#ff3333', reward: 20 },
+    GLITCH: { hp: 20, speed: 2.5, size: 9, color: '#33ff33', reward: 25 },
+    MALWARE: { hp: 180, speed: 0.6, size: 18, color: '#ff9900', reward: 50 }
+};
+
+// Listas de Entidades
+let towers = [];
+let enemies = [];
+let bullets = [];
+let particles = [];
+
+// Estado de la Voz y Animación del Avatar
+let isTalking = false;
+let mouthPulse = 0;
+
+// --- Configuración de Niveles (1 al 10) ---
+function getWaveConfig(lvl) {
+    return {
+        count: 5 + lvl * 4,
+        spawnInterval: Math.max(400, 1500 - lvl * 100),
+        types: lvl < 3 ? ['TROJAN'] : lvl < 6 ? ['TROJAN', 'GLITCH'] : ['TROJAN', 'GLITCH', 'MALWARE'],
+        hpMultiplier: 1 + (lvl - 1) * 0.45,
+        speedMultiplier: 1 + (lvl - 1) * 0.1
+    };
+}
+
+// --- Integración de Voz de Inteligencia Artificial (Maxi) ---
+function maxiSpeak(text) {
+    document.getElementById("maxiSubtitle").innerText = text;
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.pitch = 1.1;
+        utterance.rate = 1.05;
+        
+        utterance.onstart = () => { isTalking = true; };
+        utterance.onend = () => { 
+            isTalking = false; 
+            document.getElementById("maxiSubtitle").innerText = "Monitoreando amenazas...";
+        };
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+// --- Animación en Tiempo Real del Avatar ---
+function animateAvatar() {
+    avCtx.clearRect(0, 0, avCanvas.width, avCanvas.height);
+    let time = Date.now() * 0.005;
+    
+    // Dibujar Orbe Central de Datos
+    let baseRadius = 18;
+    let pulse = isTalking ? Math.sin(Date.now() * 0.03) * 6 : Math.sin(time) * 2;
+    let radius = baseRadius + pulse;
+
+    let grad = avCtx.createRadialGradient(30, 30, 2, 30, 30, radius);
+    grad.addColorStop(0, '#00f0ff');
+    grad.addColorStop(0.4, '#bc13fe');
+    grad.addColorStop(1, 'transparent');
+
+    avCtx.fillStyle = grad;
+    avCtx.beginPath();
+    avCtx.arc(30, 30, radius, 0, Math.PI * 2);
+    avCtx.fill();
+
+    // Anillos de Frecuencia Digital Externa
+    avCtx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+    avCtx.lineWidth = 1.5;
+    avCtx.beginPath();
+    avCtx.arc(30, 30, baseRadius + 8 + (isTalking ? pulse * 0.5 : 0), 0, Math.PI * 2);
+    avCtx.stroke();
+
+    requestAnimationFrame(animateAvatar);
+}
+
+// --- Mecánicas e Interacciones del Juego ---
+function updateUI() {
+    document.getElementById("lblLevel").innerText = `${state.level} / ${state.maxLevels}`;
+    document.getElementById("lblLives").innerText = state.lives;
+    document.getElementById("lblGold").innerText = state.gold;
+    document.getElementById("lblScore").innerText = state.score;
+
+    // Actualizar disponibilidad de botones de compra
+    Object.keys(TOWER_TYPES).forEach(type => {
+        const btn = document.getElementById(`btn-${type}`);
+        if (btn) btn.disabled = state.gold < TOWER_TYPES[type].cost;
+    });
+
+    const startBtn = document.getElementById("startBtn");
+    if (state.waveInProgress) {
+        startBtn.disabled = true;
+        startBtn.innerText = "Limpiando Red...";
+    } else {
+        startBtn.disabled = false;
+        startBtn.innerText = state.level === 1 && towers.length === 0 ? "Iniciar Defensa" : "Siguiente Oleada";
+    }
+}
+
+function selectTower(type) {
+    state.selectedTowerType = type;
+    Object.keys(TOWER_TYPES).forEach(t => {
+        document.getElementById(`btn-${t}`).classList.remove("selected");
+    });
+    document.getElementById(`btn-${type}`).classList.add("selected");
+}
+
+// Colocación de Torres en el Canvas
+canvas.addEventListener("click", (e) => {
+    if (state.gameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const proto = TOWER_TYPES[state.selectedTowerType];
+
+    if (state.gold >= proto.cost) {
+        // Evitar que coloquen torres encima de otras muy cerca
+        let tooClose = towers.some(t => Math.hypot(t.x - x, t.y - y) < 25);
+        if (tooClose) return;
+
+        towers.push({
+            x: x,
+            y: y,
+            type: state.selectedTowerType,
+            range: proto.range,
+            damage: proto.damage,
+            cooldown: proto.cooldown,
+            color: proto.color,
+            isEmp: proto.isEmp || false,
+            lastShot: 0
+        });
+
+        state.gold -= proto.cost;
+        createExplosion(x, y, proto.color, 10);
+        maxiSpeak(`${proto.name} inyectado.`);
+        updateUI();
+    } else {
+        maxiSpeak("Créditos insuficientes para este módulo.");
+    }
+});
+
+// Desplegar Oleadas de Enemigos (Iniciador de voz)
+function triggerNextWave() {
+    if (state.waveInProgress || state.gameOver) return;
+
+    state.waveInProgress = true;
+    const config = getWaveConfig(state.level);
+    state.enemiesLeftInWave = config.count;
+    
+    maxiSpeak(`Iniciando Fase ${state.level}. Alerta de intrusión masiva.`);
+    updateUI();
+
+    let spawned = 0;
+    let spawnInterval = setInterval(() => {
+        if (state.gameOver) {
+            clearInterval(spawnInterval);
+            return;
+        }
+
+        // Seleccionar tipo de enemigo aleatorio según nivel
+        let allowedTypes = config.types;
+        let chosenType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
+        let baseEnemy = ENEMY_TYPES[chosenType];
+
+        enemies.push({
+            x: Math.random() * (canvas.width - 40) + 20,
+            y: -20,
+            hp: baseEnemy.hp * config.hpMultiplier,
+            maxHp: baseEnemy.hp * config.hpMultiplier,
+            speed: baseEnemy.speed * config.speedMultiplier,
+            baseSpeed: baseEnemy.speed * config.speedMultiplier,
+            size: baseEnemy.size,
+            color: baseEnemy.color,
+            reward: baseEnemy.reward,
+            slowTimer: 0
+        });
+
+        spawned++;
+        if (spawned >= config.count) {
+            clearInterval(spawnInterval);
+        }
+    }, config.spawnInterval);
+}
+
+// --- Efectos de Partículas Visuales ---
+function createExplosion(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            radius: Math.random() * 3 + 1,
+            color: color,
+            alpha: 1
+        });
+    }
+}
+
+// --- Bucle Lógico y Renderizado de Motor del Juego ---
+function gameLoop() {
+    ctx.fillStyle = "#020205";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Renderizar Rangos de Torres en Hover Pasivo o diseño de cuadrícula de fondo de datos
+    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < canvas.width; i += 40) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+    }
+    for (let j = 0; j < canvas.height; j += 40) {
+        ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+    }
+
+    // 2. Manejo de Enemigos
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i];
+        
+        // Efecto de ralentización EMP
+        if (e.slowTimer > 0) {
+            e.slowTimer--;
+            e.speed = e.baseSpeed * 0.45; 
+        } else {
+            e.speed = e.baseSpeed;
+        }
+
+        e.y += e.speed;
+
+        // Si el enemigo cruza la línea inferior (Falla de Seguridad)
+        if (e.y > canvas.height) {
+            enemies.splice(i, 1);
+            state.lives--;
+            createExplosion(e.x, canvas.height - 10, '#ff0055', 15);
+            maxiSpeak("Fuga de datos detectada. Daño al núcleo.");
+            updateUI();
+
+            if (state.lives <= 0 && !state.gameOver) {
+                state.gameOver = true;
+                maxiSpeak("Sistema críticamente comprometido. Abortando MaxiQueen OS.");
+                alert("GAME OVER - El Malware destruyó tu sistema.");
+            }
+            checkWaveEnd();
+            continue;
+        }
+
+        // Dibujar Cuerpo del Enemigo (Forma Cyber)
+        ctx.fillStyle = e.color;
+        if (e.slowTimer > 0) ctx.fillStyle = "#ffff00"; // Cambiar a amarillo si está ralentizado
+        ctx.fillRect(e.x - e.size/2, e.y - e.size/2, e.size, e.size);
+
+        // Barra de Salud de Datos
+        let barW = e.size * 1.3;
+        ctx.fillStyle = "rgba(255,0,0,0.4)";
+        ctx.fillRect(e.x - barW/2, e.y - e.size - 4, barW, 4);
+        ctx.fillStyle = "#00ffcc";
+        ctx.fillRect(e.x - barW/2, e.y - e.size - 4, barW * (e.hp / e.maxHp), 4);
+    }
+
+    // 3. Manejo de Torres y Disparos Automáticos inteligente
+    let now = Date.now();
+    towers.forEach(t => {
+        // Dibujar Torre
+        ctx.fillStyle = t.color;
+        ctx.shadowBlur = 10; ctx.shadowColor = t.color;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0; // Resetear sombras
+
+        // Encontrar objetivo más avanzado (el que vaya más abajo)
+        let targets = enemies.filter(e => Math.hypot(e.x - t.x, e.y - t.y) < t.range);
+        if (targets.length > 0) {
+            targets.sort((a, b) => b.y - a.y);
+            let target = targets[0];
+
+            // Dibujar línea láser/ataque visual instantáneo
+            if (now - t.lastShot > t.cooldown) {
+                t.lastShot = now;
+                
+                bullets.push({
+                    startX: t.x, startY: t.y,
+                    x: t.x, y: t.y,
+                    target: target,
+                    damage: t.damage,
+                    color: t.color,
+                    isEmp: t.isEmp,
+                    life: 8 // frames de vida del efecto visual
+                });
+
+                // Daño inmediato
+                target.hp -= t.damage;
+                if (t.isEmp) target.slowTimer = 90; // Duración del slow
+
+                if (target.hp <= 0) {
+                    let idx = enemies.indexOf(target);
+                    if (idx > -1) {
+                        createExplosion(target.x, target.y, target.color, 12);
+                        state.gold += target.reward;
+                        state.score += target.reward * 2;
+                        enemies.splice(idx, 1);
+                        updateUI();
+                        checkWaveEnd();
+                    }
+                }
+            }
+        }
+    });
+
+    // 4. Renderizar Efectos Visuales de Disparos
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = b.isEmp ? 3 : 2;
+        ctx.beginPath();
+        ctx.moveTo(b.startX, b.startY);
+        ctx.lineTo(b.target.x, b.target.y);
+        ctx.stroke();
+        
+        b.life--;
+        if (b.life <= 0) bullets.splice(i, 1);
+    }
+
+    // 5. Renderizar Partículas de Explosiones
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.02;
+        if (p.alpha <= 0) {
+            particles.splice(i, 1);
+            continue;
+        }
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Comprobación de Fin de Oleada y Escalado de Niveles
+function checkWaveEnd() {
+    if (enemies.length === 0 && state.waveInProgress) {
+        state.waveInProgress = false;
+        
+        if (state.level >= state.maxLevels) {
+            state.gameOver = true;
+            maxiSpeak("Felicidades. Has purgado todas las amenazas de MaxiQueen OS. Servidor Limpio.");
+            alert("¡VICTORIA ABSOLUTA! Has protegido el sistema con éxito.");
+        } else {
+            maxiSpeak(`Oleada limpia. Datos optimizados. Prepárate para el siguiente sector.`);
+            state.level++;
+            state.gold += 100; // Bono de nivel superado
+        }
+        updateUI();
+    }
+}
+
+// Iniciar Motores del Juego al Cargar
+animateAvatar();
+updateUI();
+gameLoop();
+
+// Mensaje de Bienvenida de la IA
+setTimeout(() => {
+    maxiSpeak("Bienvenido al núcleo de defensa MaxiQueen OS. Coloca tus defensas de red y arranca la protección.");
+}, 800);
+</script>
+
+</body>
+</html>

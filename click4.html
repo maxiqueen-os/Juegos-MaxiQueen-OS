@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MaxiQueen OS - Cyber Enterprise Simulator</title>
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #39ff14;
+            --neon-orange: #ff9f00;
+            --ui-bg: rgba(10, 20, 30, 0.9);
+            --border-color: #1a3a4a;
+        }
+        body { 
+            margin: 0; 
+            background: #030712; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', -apple-system, Roboto, sans-serif;
+            color: var(--neon-blue);
+            user-select: none;
+        }
+        #game-container { 
+            position: relative; 
+            width: 800px; 
+            height: 600px; 
+            border: 2px solid var(--border-color); 
+            box-shadow: 0 0 35px rgba(0,242,255,0.1);
+            background: #060d1a;
+            box-sizing: border-box;
+            padding: 20px;
+            display: block;
+        }
+
+        /* Diseño de la interfaz de Consola */
+        .header-system {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .hud-title { font-weight: bold; font-size: 1.1rem; letter-spacing: 1px; color: var(--neon-pink); }
+        
+        .main-dashboard {
+            display: table;
+            width: 100%;
+            height: 380px;
+        }
+        .dashboard-row { display: table-row; }
+        .dashboard-cell { display: table-cell; vertical-align: top; padding: 8px; }
+        
+        /* Paneles Operativos */
+        .panel {
+            background: var(--ui-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        .panel-heading { font-size: 0.8rem; font-weight: bold; color: #64748b; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Contadores Financieros */
+        .metric-box { margin-bottom: 15px; }
+        .metric-label { font-size: 0.85rem; color: #94a3b8; }
+        .metric-value { font-size: 1.8rem; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+        .metric-value.green { color: var(--neon-green); }
+
+        /* Consola de Logs Operacionales */
+        #system-log {
+            height: 105px;
+            background: #020617;
+            border: 1px solid #0f172a;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.75rem;
+            overflow-y: auto;
+            color: #94a3b8;
+            margin-top: 15px;
+            box-sizing: border-box;
+        }
+        .log-entry { margin-bottom: 4px; }
+        .log-entry.success { color: var(--neon-green); }
+        .log-entry.warn { color: var(--neon-orange); }
+
+        /* Botones de Acción Operativa */
+        .action-grid { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-action {
+            flex: 1;
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-action:active { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
+        .btn-action:disabled { border-color: #334155; color: #334155; background: transparent; cursor: not-allowed; }
+
+        /* Tienda de Upgrades */
+        .upgrade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #1e293b;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+        .upgrade-info { font-size: 0.8rem; color: #cbd5e1; }
+        .upgrade-cost { font-size: 0.75rem; color: var(--neon-green); font-weight: bold; }
+        .btn-buy {
+            background: transparent;
+            border: 1px solid var(--neon-pink);
+            color: var(--neon-pink);
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .btn-buy:active { background: var(--neon-pink); color: #000; }
+
+        /* Overlays globales de pantallas */
+        .screen-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(3, 7, 18, 0.96);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+        .screen-title {
+            font-size: 2.2rem; margin-bottom: 10px; font-weight: bold; text-align: center;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .screen-desc { color: #94a3b8; font-size: 0.95rem; text-align: center; max-width: 500px; line-height: 1.5; margin-bottom: 25px; }
+        .btn-cta {
+            background: transparent; border: 2px solid var(--neon-blue); color: var(--neon-blue);
+            padding: 12px 35px; font-size: 1rem; font-weight: bold; cursor: pointer; border-radius: 4px; letter-spacing: 1px;
+        }
+        .btn-cta:hover { background: var(--neon-blue); color: #030712; box-shadow: 0 0 20px var(--neon-blue); }
+        
+        .voice-audit-btn {
+            background: transparent; border: 1px solid var(--neon-orange); color: var(--neon-orange);
+            font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    
+    <div class="header-system">
+        <div>
+            <span id="hud-level-name" class="hud-title">FASE 1: MICRO-VENTAS LOCALES</span>
+            <div style="font-size: 0.7rem; color: #64748b; margin-top: 2px;">NÚCLEO DE AUTOMATIZACIÓN COMERCIAL</div>
+        </div>
+        <button class="voice-audit-btn" onclick="triggerBusinessAudit()">🎙️ AUDITAR INFRAESTRUCTURA</button>
+    </div>
+
+    <div class="action-grid">
+        <button class="btn-action" onclick="generateLeadManual()">🎨 CREAR CONTENIDO<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">+1 Prospecto</span></button>
+        <button class="btn-action" id="btn-sell-manual" onclick="closeSaleManual()">🛒 CERRAR VENTAS<br><span style="font-size: 0.7rem; font-weight: normal; opacity: 0.8;">Convertir Prospecto</span></button>
+    </div>
+
+    <div class="main-dashboard">
+        <div class="dashboard-row">
+            
+            <div class="dashboard-cell" style="width: 45%;">
+                <div class="panel">
+                    <div class="panel-heading">Estado Financiero y Tráfico</div>
+                    
+                    <div class="metric-box">
+                        <div class="metric-label">Capital Acumulado</div>
+                        <div class="metric-value green" id="lbl-money">$0</div>
+                    </div>
+                    
+                    <div class="metric-box">
+                        <div class="metric-label">Prospectos en Espera (Leads)</div>
+                        <div class="metric-value" id="lbl-leads">0</div>
+                    </div>
+
+                    <div style="border-top: 1px solid #1e293b; padding-top: 10px; font-size: 0.8rem;">
+                        <div style="margin-bottom: 4px;">Generación de Tráfico: <span id="lbl-rate-leads" style="color:var(--neon-blue);">0</span> leads/s</div>
+                        <div>Cierre Automatizado: <span id="lbl-rate-sales" style="color:var(--neon-pink);">0</span> ventas/s</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-cell" style="width: 55%;">
+                <div class="panel">
+                    <div class="panel-heading">Adquisición de Módulos (IA & Notion)</div>
+                    
+                    <div class="upgrade-item">
+                        <div class="upgrade-info">
+                            <strong>Script de IA Local (Ollama)</strong><br>
+                            <span style="color:#64748b;">+0.5 leads pasivos por segundo.</span>
+                        </div>
+                        <div>
+                            <span class="upgrade-cost" id="cost-up1">$25</span>
+                            <button class="btn-buy" onclick="buyUpgrade('ia')">+ Instalar</button>
+                        </div>
+                    </div>
+
+                    <div class="upgrade-item">
+                        <div class="upgrade-info">
+                            <strong>Embudo Web Automatizado (Vercel)</strong><br>
+                            <span style="color:#64748b;">Cierra 1 venta de lead por segundo.</span>
+                        </div>
+                        <div>
+                            <span class="upgrade-cost" id="cost-up2">$80</span>
+                            <button class="btn-buy" onclick="buyUpgrade('vercel')">+ Desplegar</button>
+                        </div>
+                    </div>
+
+                    <div class="upgrade-item">
+                        <div class="upgrade-info">
+                            <strong>Hub de Integración de Notion</strong><br>
+                            <span style="color:#64748b;">+ $8 de ganancia por cada venta.</span>
+                        </div>
+                        <div>
+                            <span class="upgrade-cost" id="cost-up3">$150</span>
+                            <button class="btn-buy" onclick="buyUpgrade('notion')">+ Integrar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="system-log">
+        <div class="log-entry success">> Inicializando Módulo Comercial de MaxiQueen OS... Listo.</div>
+    </div>
+
+    <div id="start-screen" class="screen-overlay">
+        <div class="screen-title">CYBER ENTERPRISE SIMULATOR</div>
+        <div class="screen-desc">Automatiza tu infraestructura de monetización. Diseña contenido para atraer clientes potenciales y levanta scripts automatizados para facturar en piloto automático. Alza el imperio comercial de MaxiQueen OS.</div>
+        <button class="btn-cta" onclick="startCommercialApp()">INICIAR OPERACIONES</button>
+    </div>
+
+    <div id="next-phase-screen" class="screen-overlay" style="display: none;">
+        <div class="screen-title" id="phase-clear-title">FASE CONSOLIDADA</div>
+        <div class="screen-desc">La rentabilidad del negocio ha superado los objetivos base establecidos para este mercado. Se requiere expansión del ancho de banda y actualización de servidores.</div>
+        <button class="btn-cta" onclick="advanceToNextPhase()">ESCALAR EMPRESA</button>
+    </div>
+
+    <div id="victory-screen" class="screen-overlay" style="display: none;">
+        <div class="screen-title">EMPRESA TOTALMENTE AUTÓNOMA</div>
+        <div class="screen-desc">Felicidades. Has integrado con éxito scripts de IA local, embudos optimizados y Notion. El flujo de ingresos pasivos es masivo y MaxiQueen OS domina el mercado digital de Hotmart de forma 100% autónoma.</div>
+        <button class="btn-cta" onclick="restartEntireBusiness()">REINICIAR APLICACIÓN</button>
+    </div>
+
+</div>
+
+<script>
+    // Configuración de Fases Comerciales (10 veces superiores e incrementales)
+    const operationalPhases = {
+        1: { name: "FASE 1: MICRO-VENTAS LOCALES", targetRevenue: 500, baseSaleValue: 10 },
+        2: { name: "FASE 2: AGENCIA DIGITAL ESCALADA", targetRevenue: 4000, baseSaleValue: 25 },
+        3: { name: "FASE 3: MONOPOLIO AUTÓNOMO DE IA", targetRevenue: 25000, baseSaleValue: 75 }
+    };
+
+    let currentPhaseIndex = 1;
+    
+    // Estado del negocio
+    let businessState = {
+        money: 0,
+        leads: 0,
+        iaScriptsCount: 0,
+        vercelFunnelsCount: 0,
+        notionHubsCount: 0,
+        appRunning: false
+    };
+
+    // Precios Iniciales de Upgrades
+    let upgradeCosts = { ia: 25, vercel: 80, notion: 150 };
+
+    // MOTOR NATIVO DE SÍNTESIS DE VOZ DE MAXIQUEEN OS
+    function speakSystemOS(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function triggerBusinessAudit() {
+        let currentConf = operationalPhases[currentPhaseIndex];
+        let missing = currentConf.targetRevenue - businessState.money;
+        let auditMsg = `Auditoría corporativa de MaxiQueen OS. Corriendo en la ${currentConf.name}. Fondos de caja actuales, ${Math.floor(businessState.money)} dólares. Restan ${Math.floor(missing > 0 ? missing : 0)} para alcanzar el hito de expansión.`;
+        speakSystemOS(auditMsg);
+    }
+
+    function pushLog(text, type = 'normal') {
+        const logBox = document.getElementById("system-log");
+        const entry = document.createElement("div");
+        entry.className = `log-entry ${type}`;
+        entry.innerText = `> ${text}`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight; // Auto scroll
+    }
+
+    // Inicializaciones
+    function startCommercialApp() {
+        document.getElementById("start-screen").style.display = "none";
+        businessState.appRunning = true;
+        initPhase(1);
+        speakSystemOS("Sistema empresarial inicializado. Es hora de crear contenido y capturar prospectos.");
+    }
+
+    function initPhase(phaseNum) {
+        currentPhaseIndex = phaseNum;
+        const conf = operationalPhases[phaseNum];
+        
+        document.getElementById("hud-level-name").innerText = conf.name;
+        pushLog(`Iniciando operaciones en: ${conf.name}. Meta financiera: $${conf.targetRevenue}`, 'success');
+        
+        // Mantener las automatizaciones de fases previas para dar sensación de crecimiento real
+        updateUI();
+    }
+
+    // Acciones Manuales del Jugador
+    function generateLeadManual() {
+        if (!businessState.appRunning) return;
+        businessState.leads += 1;
+        updateUI();
+        pushLog("Contenido distribuido. Tráfico orgánico capturado (+1 Prospecto).");
+        
+        // Evento raro aleatorio al hacer contenido (Campaña Viral)
+        if (Math.random() < 0.06) {
+            triggerViralEvent();
+        }
+    }
+
+    function closeSaleManual() {
+        if (!businessState.appRunning || businessState.leads < 1) return;
+        
+        businessState.leads--;
+        const conf = operationalPhases[currentPhaseIndex];
+        // Cada Hub de Notion aumenta el valor del ticket de venta permanentemente
+        let ticketValue = conf.baseSaleValue + (businessState.notionHubsCount * 8);
+        
+        businessState.money += ticketValue;
+        updateUI();
+        pushLog(`Cierre manual de venta exitoso. Ingreso registrado: +$${ticketValue}`, 'success');
+
+        checkPhaseCompletion();
+    }
+
+    // Lógica Estratégica de Upgrades e Infraestructura
+    function buyUpgrade(type) {
+        if (businessState.money < upgradeCosts[type]) {
+            speakSystemOS("Fondos de inversión insuficientes para este módulo.");
+            pushLog("Error de transacción: Capital de caja insuficiente.", 'warn');
+            return;
+        }
+
+        businessState.money -= upgradeCosts[type];
+
+        if (type === 'ia') {
+            businessState.iaScriptsCount++;
+            upgradeCosts.ia = Math.round(upgradeCosts.ia * 1.35);
+            pushLog("Script de IA Local compilado exitosamente mediante Ollama.", 'success');
+            speakSystemOS("Script de Inteligencia Artificial local acoplado.");
+        } else if (type === 'vercel') {
+            businessState.vercelFunnelsCount++;
+            upgradeCosts.vercel = Math.round(upgradeCosts.vercel * 1.4);
+            pushLog("Embudo de microservicios desplegado de forma global en Vercel.", 'success');
+            speakSystemOS("Filtro de conversión en la nube activado.");
+        } else if (type === 'notion') {
+            businessState.notionHubsCount++;
+            upgradeCosts.notion = Math.round(upgradeCosts.notion * 1.45);
+            pushLog("Base de datos de Notion vinculada. El valor del ticket comercial ha escalado.", 'success');
+            speakSystemOS("Base de datos de Notion integrada. Multiplicando valor de conversión.");
+        }
+
+        updateUI();
+        
+        // Simular un bug del servidor cuando tienes demasiada automatización corriendo sin Notion
+        if (businessState.vercelFunnelsCount === 3 && Math.random() < 0.5) {
+            triggerServerCrashEvent();
+        }
+    }
+
+    // Eventos del Sistema Divertidos y Sorpresivos
+    function triggerViralEvent() {
+        let viralBonus = currentPhaseIndex * 15;
+        businessState.leads += viralBonus;
+        pushLog(`¡ALERTA VIRAL! Un video de automatización explotó en el algoritmo. +${viralBonus} leads instantáneos.`, 'success');
+        speakSystemOS("Tráfico en redes fuera de los parámetros normales. Campaña masiva viral detectada.");
+        updateUI();
+    }
+
+    let isServerCrashed = false;
+    function triggerServerCrashEvent() {
+        isServerCrashed = true;
+        pushLog("¡CRISIS DE SERVIDOR! Demasiadas peticiones simultáneas en la nube de Vercel. Automatización congelada.", 'warn');
+        speakSystemOS("Alerta de infraestructura. Servidores sobrecargados. Corra una optimización inmediatamente.");
+        
+        // Bloquear temporalmente el botón de venta manual para forzar la atención en arreglar el servidor
+        const btn = document.getElementById("btn-sell-manual");
+        btn.innerText = "🛠️ OPTIMIZAR CÓDIGO (Reparar)";
+        btn.onclick = function() {
+            isServerCrashed = false;
+            pushLog("Servidores parcheados con éxito. Automatización en línea.", 'success');
+            speakSystemOS("Servidores estables.");
+            btn.innerHTML = "🛒 CERRAR VENTAS<br><span style='font-size: 0.7rem; font-weight: normal; opacity: 0.8;'>Convertir Prospecto</span>";
+            btn.onclick = closeSaleManual;
+            updateUI();
+        };
+    }
+
+    // Reloj o Bucle de Automatización Pasiva por Segundo
+    setInterval(function() {
+        if (!businessState.appRunning || isServerCrashed) return;
+
+        // 1. Producción Automática de Leads por las IAs de Ollama
+        let passiveLeadsGenerated = businessState.iaScriptsCount * 0.5;
+        businessState.leads += passiveLeadsGenerated;
+
+        // 2. Conversión Pasiva de Leads a Dinero por los Bots en Vercel
+        let passiveSalesPossible = businessState.vercelFunnelsCount * 1;
+        if (passiveSalesPossible > 0 && businessState.leads >= 1) {
+            // Determinar cuántos leads se pueden cerrar de golpe en este ciclo (máximo la cantidad disponible)
+            let actualCops = Math.min(Math.floor(businessState.leads), passiveSalesPossible);
+            
+            businessState.leads -= actualCops;
+            const conf = operationalPhases[currentPhaseIndex];
+            let ticketValue = conf.baseSaleValue + (businessState.notionHubsCount * 8);
+            
+            businessState.money += actualCops * ticketValue;
+            pushLog(`Automatización Vercel procesó ${actualCops} transacciones comerciales (+$${actualCops * ticketValue}).`, 'success');
+            
+            checkPhaseCompletion();
+        }
+
+        updateUI();
+    }, 1000);
+
+    function checkPhaseCompletion() {
+        const conf = operationalPhases[currentPhaseIndex];
+        if (businessState.money >= conf.targetRevenue) {
+            businessState.appRunning = false;
+            
+            if (operationalPhases[currentPhaseIndex + 1]) {
+                document.getElementById("phase-clear-title").innerText = `FASE ${currentPhaseIndex} CONSOLIDADA`;
+                document.getElementById("next-phase-screen").style.display = "flex";
+                speakSystemOS(`Hito de facturación de la fase ${currentPhaseIndex} completado. Preparando escalabilidad de servidores.`);
+            } else {
+                document.getElementById("victory-screen").style.display = "flex";
+                speakSystemOS("Felicidades. El ecosistema empresarial de MaxiQueen OS es completamente autónomo y dominante en el mercado global.");
+            }
+        }
+    }
+
+    function advanceToNextPhase() {
+        document.getElementById("next-phase-screen").style.display = "none";
+        businessState.appRunning = true;
+        initPhase(currentPhaseIndex + 1);
+    }
+
+    function restartEntireBusiness() {
+        document.getElementById("victory-screen").style.display = "none";
+        businessState.money = 0;
+        businessState.leads = 0;
+        businessState.iaScriptsCount = 0;
+        businessState.vercelFunnelsCount = 0;
+        businessState.notionHubsCount = 0;
+        upgradeCosts = { ia: 25, vercel: 80, notion: 150 };
+        businessState.appRunning = true;
+        initPhase(1);
+    }
+
+    // Actualización visual de Textos e Inputs
+    function updateUI() {
+        document.getElementById("lbl-money").innerText = `$${Math.floor(businessState.money)}`;
+        document.getElementById("lbl-leads").innerText = Math.floor(businessState.leads);
+        
+        // Mostrar tasas por segundo
+        document.getElementById("lbl-rate-leads").innerText = (businessState.iaScriptsCount * 0.5).toFixed(1);
+        document.getElementById("lbl-rate-sales").innerText = (businessState.vercelFunnelsCount * 1);
+
+        // Actualizar precios y bloquear botones en caso de no tener capital
+        document.getElementById("cost-up1").innerText = `$${upgradeCosts.ia}`;
+        document.getElementById("cost-up2").innerText = `$${upgradeCosts.vercel}`;
+        document.getElementById("cost-up3").innerText = `$${upgradeCosts.notion}`;
+    }
+
+    // Cargar voces del navegador para evitar delays
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+    }
+</script>
+</body>
+</html>
