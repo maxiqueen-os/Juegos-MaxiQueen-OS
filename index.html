@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<!-- saved from url=(0040)https://juegos-maxi-queen-os.vercel.app/ -->
 <html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1 nuevo mensaje</title>
+    <title>SUDOKU MAXIQUEEN PRO 👑</title>
     <style>
         :root {
             --bg: #0b0f1a;
@@ -48,8 +47,45 @@
             padding: 10px;
             background: var(--surface);
             border-radius: 12px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             font-weight: bold;
+        }
+
+        /* Panel de Control de Voz Integrado */
+        .voice-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.4);
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+
+        .voice-btn {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .voice-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+        }
+
+        .voice-btn:active {
+            transform: scale(0.96);
         }
 
         /* El Tablero */
@@ -140,65 +176,94 @@
             margin-top: 15px;
         }
 
-        .btn-main {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            background: var(--accent);
-            color: var(--bg);
-        }
-
         #status-msg {
             text-align: center;
             margin-top: 10px;
             font-size: 0.9rem;
             height: 20px;
         }
+
+        /* Hub de Navegación */
+        .os-navigation-hub {
+            width: 100%;
+            max-width: 450px;
+            margin-top: 30px;
+            background: #111522;
+            padding: 15px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .hub-title {
+            text-align: center;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            color: #a855f7;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .hub-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .hub-card {
+            display: flex;
+            align-items: center;
+            background: var(--surface);
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: white;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .hub-card:hover {
+            border-color: var(--primary);
+            background: #1e2436;
+        }
+
+        .hub-card.active-link {
+            border-left: 3px solid var(--accent);
+        }
+
+        .card-id {
+            background: var(--primary);
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .card-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-name {
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .card-status {
+            font-size: 0.7rem;
+            color: #9ca3af;
+        }
+
+        .card-arrow {
+            font-weight: bold;
+            color: var(--primary);
+            margin-left: 5px;
+        }
     </style>
-<script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0d2b7c.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d224aff.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0aef27.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-3ea2c7ce.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0da3af.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-4fe9d5dd.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-7941cc06.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-6289ff8e.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0c8092.js.descarga"></script><style type="text/css">#p5ute2d56gso1778258098574 {outline:none !important;
-visibility:visible !important;
-resize:none !important;
-box-shadow:none !important;
-overflow:visible !important;
-background:none !important;
-opacity:1 !important;
-filter:alpha(opacity=100) !important;
--ms-filter:progid:DXImageTransform.Microsoft.Alpha(Opacity 1}) !important;
--mz-opacity:1 !important;
--khtml-opacity:1 !important;
-top:0px !important;
-right:auto !important;
-bottom:auto !important;
-left:0px !important;
-position:fixed !important;
-border:0 !important;
-min-height:0px  !important;
-min-width:0px  !important;
-max-height:none  !important;
-max-width:none  !important;
-padding:0px !important;
-margin:0px !important;
--moz-transition-property:none !important;
--webkit-transition-property:none !important;
--o-transition-property:none !important;
-transition-property:none !important;
-transform:none !important;
--webkit-transform:none !important;
--ms-transform:none !important;
-width:auto !important;
-height:auto  !important;
-display:none !important;
-z-index:2000000000 !important;
-background-color:transparent !important;
-cursor:none !important;
-float:none !important;
-border-radius:unset !important;
-pointer-events:auto !important;
-clip:auto !important;
-color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover[data-v-2fc2d95d]:focus,.tawk-button-hover[data-v-2fc2d95d]:hover{background-color:hsla(0,0%,100%,.2)!important;border-radius:5px!important}</style><style type="text/css">@keyframes tawkMaxOpen{0%{opacity:0;transform:translate(0, -30px);;}to{opacity:1;transform:translate(0, 0px);}}@-moz-keyframes tawkMaxOpen{0%{opacity:0;transform:translate(0, -30px);;}to{opacity:1;transform:translate(0, 0px);}}@-webkit-keyframes tawkMaxOpen{0%{opacity:0;transform:translate(0, -30px);;}to{opacity:1;transform:translate(0, 0px);}}#zvnphjseu9081778258098644.open{animation : tawkMaxOpen .25s ease!important;}@keyframes tawkMaxClose{from{opacity: 1;transform:translate(0, 0px);;}to{opacity: 0;transform:translate(0, -30px);;}}@-moz-keyframes tawkMaxClose{from{opacity: 1;transform:translate(0, 0px);;}to{opacity: 0;transform:translate(0, -30px);;}}@-webkit-keyframes tawkMaxClose{from{opacity: 1;transform:translate(0, 0px);;}to{opacity: 0;transform:translate(0, -30px);;}}#zvnphjseu9081778258098644.closed{animation: tawkMaxClose .25s ease!important}</style><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0e5f34.js.descarga"></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script src="./Sudoku MaxiQueen PRO 👑_files/emojione.min.js.descarga" type="text/javascript" async="" defer=""></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-18f22878.js.descarga"></script><style type="text/css">.tawk-message-item,.tawk-message-item-body{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;position:relative}.tawk-message-item-body{-ms-flex-pack:justify;justify-content:space-between;width:100%}.tawk-message-content{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex:1;flex:1;overflow:hidden;margin-right:10px}.tawk-message-item-body p{-ms-flex:1;flex:1;margin-right:5px;overflow:hidden}.tawk-message-chevron{color:#999;margin-left:0}.tawk-badge-inline,.tawk-emoji-container{display:inline-block}.tawk-badge-inline{vertical-align:middle;margin-left:5px}.tawk-badge-column{-ms-flex-negative:0;flex-shrink:0}.tawk-badge-icon-container{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;white-space:nowrap}.tawk-home-list-chat-content-badge{margin-right:0!important}</style><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0af2da.js.descarga"></script></head>
+<script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0d2b7c.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d224aff.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0aef27.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-3ea2c7ce.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0da3af.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-4fe9d5dd.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-7941cc06.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-6289ff8e.js.descarga"></script><script charset="utf-8" src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-2d0c8092.js.descarga"></script></head>
 <body>
 
 <div class="app-container">
@@ -210,7 +275,12 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
         <span id="lives">❤️ 3</span>
     </div>
 
-    <div id="grid" class="sudoku-grid"><div class="cell" data-index="0"></div><div class="cell" data-index="1"></div><div class="cell" data-index="2"></div><div class="cell" data-index="3"></div><div class="cell" data-index="4"></div><div class="cell" data-index="5"></div><div class="cell" data-index="6"></div><div class="cell" data-index="7"></div><div class="cell" data-index="8"></div><div class="cell" data-index="9"></div><div class="cell" data-index="10"></div><div class="cell" data-index="11"></div><div class="cell" data-index="12"></div><div class="cell" data-index="13"></div><div class="cell" data-index="14"></div><div class="cell" data-index="15"></div><div class="cell" data-index="16"></div><div class="cell" data-index="17"></div><div class="cell" data-index="18"></div><div class="cell" data-index="19"></div><div class="cell" data-index="20"></div><div class="cell" data-index="21"></div><div class="cell" data-index="22"></div><div class="cell" data-index="23"></div><div class="cell" data-index="24"></div><div class="cell" data-index="25"></div><div class="cell" data-index="26"></div><div class="cell" data-index="27"></div><div class="cell" data-index="28"></div><div class="cell" data-index="29"></div><div class="cell" data-index="30"></div><div class="cell" data-index="31"></div><div class="cell" data-index="32"></div><div class="cell" data-index="33"></div><div class="cell" data-index="34"></div><div class="cell" data-index="35"></div><div class="cell" data-index="36"></div><div class="cell" data-index="37"></div><div class="cell" data-index="38"></div><div class="cell" data-index="39"></div><div class="cell" data-index="40"></div><div class="cell" data-index="41"></div><div class="cell" data-index="42"></div><div class="cell" data-index="43"></div><div class="cell" data-index="44"></div><div class="cell" data-index="45"></div><div class="cell" data-index="46"></div><div class="cell" data-index="47"></div><div class="cell" data-index="48"></div><div class="cell" data-index="49"></div><div class="cell" data-index="50"></div><div class="cell" data-index="51"></div><div class="cell" data-index="52"></div><div class="cell" data-index="53"></div><div class="cell" data-index="54"></div><div class="cell" data-index="55"></div><div class="cell" data-index="56"></div><div class="cell" data-index="57"></div><div class="cell" data-index="58"></div><div class="cell" data-index="59"></div><div class="cell" data-index="60"></div><div class="cell" data-index="61"></div><div class="cell" data-index="62"></div><div class="cell" data-index="63"></div><div class="cell" data-index="64"></div><div class="cell" data-index="65"></div><div class="cell" data-index="66"></div><div class="cell" data-index="67"></div><div class="cell" data-index="68"></div><div class="cell" data-index="69"></div><div class="cell" data-index="70"></div><div class="cell" data-index="71"></div><div class="cell" data-index="72"></div><div class="cell" data-index="73"></div><div class="cell" data-index="74"></div><div class="cell" data-index="75"></div><div class="cell" data-index="76"></div><div class="cell" data-index="77"></div><div class="cell" data-index="78"></div><div class="cell" data-index="79"></div><div class="cell" data-index="80"></div></div>
+    <div class="voice-panel">
+        <span>🎙️ Asistente de Voz Activo</span>
+        <button class="voice-btn" onclick="narrateGameState()">🔊 Leer Estado</button>
+    </div>
+
+    <div id="grid" class="sudoku-grid"></div>
 
     <div class="numpad">
         <button class="num-btn" onclick="inputValue(1)">1</button>
@@ -226,26 +296,53 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
     </div>
 
     <div class="difficulty-btns">
-        <button class="btn-sm" onclick="newGame(&#39;easy&#39;)">Fácil</button>
-        <button class="btn-sm" onclick="newGame(&#39;medium&#39;)">Medio</button>
-        <button class="btn-sm" onclick="newGame(&#39;hard&#39;)">Difícil</button>
-        <button class="btn-sm" onclick="newGame(&#39;expert&#39;)">Experto</button>
-        <button class="btn-sm" onclick="newGame(&#39;extreme&#39;)">Extremo</button>
+        <button class="btn-sm" onclick="newGame('easy')">Fácil</button>
+        <button class="btn-sm" onclick="newGame('medium')">Medio</button>
+        <button class="btn-sm" onclick="newGame('hard')">Difícil</button>
+        <button class="btn-sm" onclick="newGame('expert')">Experto</button>
+        <button class="btn-sm" onclick="newGame('extreme')">Extremo</button>
         <button class="btn-sm" onclick="solveGame()">Resolver</button>
     </div>
 
     <div id="status-msg">Selecciona un nivel para empezar</div>
 </div>
 
-<script src="./Sudoku MaxiQueen PRO 👑_files/twk-main.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-vendor.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-vendors.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-common.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-runtime.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-app.js.descarga" charset="UTF-8" crossorigin="*"></script><script async="" src="./Sudoku MaxiQueen PRO 👑_files/1jku6q3n5" charset="UTF-8" crossorigin="*"></script><script>
+<script src="./Sudoku MaxiQueen PRO 👑_files/twk-main.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-vendor.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-vendors.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-chunk-common.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-runtime.js.descarga" charset="UTF-8" crossorigin="*"></script><script src="./Sudoku MaxiQueen PRO 👑_files/twk-app.js.descarga" charset="UTF-8" crossorigin="*"></script><script async="" src="./Sudoku MaxiQueen PRO 👑_files/1jku6q3n5" charset="UTF-8" crossorigin="*"></script>
+
+<script>
     let solution = [];
     let currentBoard = [];
     let selectedCell = null;
     let lives = 3;
     let seconds = 0;
     let timerInt;
+    let currentLevel = "";
 
     const gridEl = document.getElementById('grid');
+
+    // MOTOR DE VOZ LOCAL (WEB SPEECH API)
+    function executeVoiceSpeak(textMessage) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); // Detiene cualquier lectura en cola inmediatamente
+            const speechUtterance = new SpeechSynthesisUtterance(textMessage);
+            speechUtterance.lang = 'es-ES';
+            speechUtterance.rate = 1.05; // Velocidad de lectura óptima
+            speechUtterance.pitch = 1.0;
+            window.speechSynthesis.speak(speechUtterance);
+        }
+    }
+
+    // Función del botón "Leer Estado"
+    function narrateGameState() {
+        if (!currentLevel) {
+            executeVoiceSpeak("El sistema está listo. Selecciona una dificultad en los botones inferiores para iniciar el juego.");
+            return;
+        }
+        let minutes = Math.floor(seconds / 60);
+        let remainingSeconds = seconds % 60;
+        let report = `Partida en nivel ${currentLevel}. Tienes ${lives} de tres vidas disponibles. El cronómetro marca ${minutes} minutos con ${remainingSeconds} segundos.`;
+        executeVoiceSpeak(report);
+    }
 
     // Inicializar rejilla vacía
     function initGrid() {
@@ -317,8 +414,12 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
         clearInterval(timerInt);
         seconds = 0;
         lives = 3;
+        
+        const difficultyTranslations = { easy: 'Fácil', medium: 'Medio', hard: 'Difícil', expert: 'Experto', extreme: 'Extremo' };
+        currentLevel = difficultyTranslations[level] || level.toUpperCase();
+        
         document.getElementById('lives').textContent = "❤️ " + lives;
-        document.getElementById('difficulty-label').textContent = "Nivel: " + level.toUpperCase();
+        document.getElementById('difficulty-label').textContent = "Nivel: " + currentLevel;
         
         solution = generateSudoku();
         const counts = { easy: 35, medium: 45, hard: 52, expert: 58, extreme: 64 };
@@ -336,6 +437,7 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
         const cells = document.querySelectorAll('.cell');
         cells.forEach((cell, i) => {
             cell.classList.remove('fixed', 'error', 'selected', 'related');
+            cell.style.color = "";
             cell.textContent = puzzle[i] !== 0 ? puzzle[i] : '';
             if (puzzle[i] !== 0) cell.classList.add('fixed');
         });
@@ -348,6 +450,9 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
         }, 1000);
         
         document.getElementById('status-msg').textContent = "¡Buena suerte!";
+        
+        // Notificación de voz inicial
+        executeVoiceSpeak(`Iniciando nueva partida en dificultad ${currentLevel}. ¡Buena suerte de parte de MaxiQueen OS!`);
     }
 
     function inputValue(num) {
@@ -366,7 +471,13 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
             cell.classList.add('error');
             lives--;
             document.getElementById('lives').textContent = "❤️ " + lives;
-            if (lives <= 0) gameOver(false);
+            
+            if (lives <= 0) {
+                gameOver(false);
+            } else {
+                // Notificación de voz ante error
+                executeVoiceSpeak(`Número incorrecto. Cuidado, te quedan ${lives} vidas.`);
+            }
         } else {
             cell.classList.remove('error');
             checkWin();
@@ -385,7 +496,13 @@ color-scheme:light !important;}</style><style type="text/css">.tawk-button-hover
     function gameOver(win) {
         clearInterval(timerInt);
         document.getElementById('status-msg').textContent = win ? "🏆 ¡ERES UN PRO!" : "💀 JUEGO TERMINADO";
-        if (!win) solveGame();
+        
+        if (win) {
+            executeVoiceSpeak("Felicidades. Has resuelto exitosamente el tablero. Eres un verdadero profesional.");
+        } else {
+            executeVoiceSpeak("Juego terminado. Te has quedado sin vidas. Desplegando la solución en pantalla.");
+            solveGame();
+        }
     }
 
     function solveGame() {
@@ -457,7 +574,7 @@ s0.parentNode.insertBefore(s1,s0);
             <div class="card-arrow">→</div>
         </a>
 
-         <a href="play23.html" class="hub-card">
+        <a href="https://juegos-maxi-queen-os.vercel.app/play23.html" class="hub-card">
             <span class="card-id">MQ-01</span>
             <div class="card-info">
                 <span class="card-name">Play al sistema Inicial MQ</span>
@@ -466,10 +583,10 @@ s0.parentNode.insertBefore(s1,s0);
             <div class="card-arrow">→</div>
         </a>
 
-        <a href="play24.html" class="hub-card">
+        <a href="https://juegos-maxi-queen-os.vercel.app/play24.html" class="hub-card">
             <span class="card-id">MQ-02</span>
             <div class="card-info">
-                <span class="card-name">MaxiQueen Run </span>
+                <span class="card-name">MaxiQueen Run</span>
                 <span class="card-status">Beta al multiverso</span>
             </div>
             <div class="card-arrow">→</div>
@@ -478,7 +595,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/playCarrito.html" class="hub-card">
             <span class="card-id">MQ-03</span>
             <div class="card-info">
-                <span class="card-name"> Play Carrito MQ</span>
+                <span class="card-name">Play Carrito MQ</span>
                 <span class="card-status">Maxiqueen Digital</span>
             </div>
             <div class="card-arrow">→</div>
@@ -487,7 +604,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/playTorresMQ.html" class="hub-card">
             <span class="card-id">MQ-04</span>
             <div class="card-info">
-                <span class="card-name"> Play_Torres MQ</span>
+                <span class="card-name">Play_Torres MQ</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -496,7 +613,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/playchip1.html" class="hub-card">
             <span class="card-id">MQ-05</span>
             <div class="card-info">
-                <span class="card-name"> chip 1 MQ</span>
+                <span class="card-name">chip 1 MQ</span>
                 <span class="card-status">Avanza y salta</span>
             </div>
             <div class="card-arrow">→</div>
@@ -505,16 +622,16 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/snake10.html" class="hub-card">
             <span class="card-id">MQ-06</span>
             <div class="card-info">
-                <span class="card-name">Play_Snake basica </span>
+                <span class="card-name">Play_Snake basica</span>
                 <span class="card-status">Beta Basic</span>
             </div>
             <div class="card-arrow">→</div>
         </a>
 
-        <a href="snake9adv.html" class="hub-card">
+        <a href="https://juegos-maxi-queen-os.vercel.app/snake9adv.html" class="hub-card">
             <span class="card-id">MQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Snake 9 Advance </span>
+                <span class="card-name">Snake 9 Advance</span>
                 <span class="card-status">Beta Evolution</span>
             </div>
             <div class="card-arrow">→</div>
@@ -523,7 +640,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/snake3.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Snake 3 </span>
+                <span class="card-name">Snake 3</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -532,7 +649,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/play27.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> derrumba torres inicial </span>
+                <span class="card-name">derrumba torres inicial</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -541,7 +658,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/play30.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> derrumba torres inicial </span>
+                <span class="card-name">derrumba torres inicial 30</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -550,7 +667,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/play31.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> derrumba torres inicial </span>
+                <span class="card-name">derrumba torres inicial 31</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -559,7 +676,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/playsnake.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> derrumba torres inicial </span>
+                <span class="card-name">playsnake core</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -568,7 +685,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/snake8.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Snake 8 </span>
+                <span class="card-name">Snake 8</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -577,7 +694,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/CarritoAvanza.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Carrito Avanza </span>
+                <span class="card-name">Carrito Avanza</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -586,7 +703,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Carrito3avanz.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Carrito 3 avanza </span>
+                <span class="card-name">Carrito 3 avanza</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -595,7 +712,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Carrito2.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Carrito 2 </span>
+                <span class="card-name">Carrito 2</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -604,7 +721,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/EimyTorres.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Eimy Torres </span>
+                <span class="card-name">Eimy Torres</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -613,7 +730,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Diamantavan.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Diamant Avanza </span>
+                <span class="card-name">Diamant Avanza</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -622,7 +739,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Energia1.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Energia 1 </span>
+                <span class="card-name">Energia 1</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -631,7 +748,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Disparos.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Disparos 1 </span>
+                <span class="card-name">Disparos 1</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -640,7 +757,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/NotasMaxiqueen.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Notas Maxiqueen  </span>
+                <span class="card-name">Notas Maxiqueen</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -649,7 +766,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Puntoscaen1.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Puntos Caen </span>
+                <span class="card-name">Puntos Caen</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -658,7 +775,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/Puntoscaen2.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Puntos caen 2 </span>
+                <span class="card-name">Puntos caen 2</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -667,52 +784,7 @@ s0.parentNode.insertBefore(s1,s0);
         <a href="https://juegos-maxi-queen-os.vercel.app/QueenTower.html" class="hub-card">
             <span class="card-id">SQ-06</span>
             <div class="card-info">
-                <span class="card-name"> Queen Tower </span>
-                <span class="card-status">Beta Release</span>
-            </div>
-            <div class="card-arrow">→</div>
-        </a>
-
-        <a href="https://juegos-maxi-queen-os.vercel.app/Queen 1.html" class="hub-card">
-            <span class="card-id">SQ-06</span>
-            <div class="card-info">
-                <span class="card-name"> derrumba torres inicial </span>
-                <span class="card-status">Beta Release</span>
-            </div>
-            <div class="card-arrow">→</div>
-        </a>
-
-         <a href="https://juegos-maxi-queen-os.vercel.app/Salta1.html" class="hub-card">
-            <span class="card-id">SQ-06</span>
-            <div class="card-info">
-                <span class="card-name"> Salta 1 </span>
-                <span class="card-status">Beta Release</span>
-            </div>
-            <div class="card-arrow">→</div>
-        </a>
-
-        <a href="https://juegos-maxi-queen-os.vercel.app/Snake5.html" class="hub-card">
-            <span class="card-id">SQ-06</span>
-            <div class="card-info">
-                <span class="card-name"> Snake 5 </span>
-                <span class="card-status">Beta Release</span>
-            </div>
-            <div class="card-arrow">→</div>
-        </a>
-
-        <a href="https://juegos-maxi-queen-os.vercel.app/Solosalta.html" class="hub-card">
-            <span class="card-id">SQ-06</span>
-            <div class="card-info">
-                <span class="card-name"> Salta 2 </span>
-                <span class="card-status">Beta Release</span>
-            </div>
-            <div class="card-arrow">→</div>
-        </a>
-
-        <a href="https://juegos-maxi-queen-os.vercel.app/Torres1.html" class="hub-card">
-            <span class="card-id">SQ-06</span>
-            <div class="card-info">
-                <span class="card-name"> Torres 1 </span>
+                <span class="card-name">Queen Tower</span>
                 <span class="card-status">Beta Release</span>
             </div>
             <div class="card-arrow">→</div>
@@ -720,99 +792,5 @@ s0.parentNode.insertBefore(s1,s0);
     </div>
 </div>
 
-<style>
-    /* Estilos integrados para MaxiQueen OS Hub */
-    .os-navigation-hub {
-        width: 100%;
-        max-width: 480px;
-        margin: 30px auto;
-        padding: 0 20px;
-        font-family: 'Inter', sans-serif;
-    }
-
-    .hub-title {
-        color: var(--mq-accent, #00f2ff);
-        font-size: 0.75rem;
-        letter-spacing: 3px;
-        margin-bottom: 15px;
-        opacity: 0.8;
-        border-bottom: 1px solid rgba(0, 242, 255, 0.2);
-        padding-bottom: 5px;
-    }
-
-    .hub-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .hub-card {
-        display: flex;
-        align-items: center;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 12px 15px;
-        text-decoration: none;
-        color: white;
-        transition: all 0.3s ease;
-    }
-
-    .hub-card:hover {
-        background: rgba(112, 0, 255, 0.1);
-        border-color: #7000ff;
-        transform: translateX(5px);
-    }
-
-    .card-id {
-        font-size: 0.65rem;
-        background: rgba(0, 242, 255, 0.1);
-        color: #00f2ff;
-        padding: 4px 8px;
-        border-radius: 5px;
-        font-weight: bold;
-        margin-right: 15px;
-        min-width: 50px;
-        text-align: center;
-    }
-
-    .card-info {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-    }
-
-    .card-name {
-        font-size: 0.95rem;
-        font-weight: 500;
-    }
-
-    .card-status {
-        font-size: 0.7rem;
-        color: #8892b0;
-    }
-
-    .card-arrow {
-        color: #7000ff;
-        font-weight: bold;
-        opacity: 0.5;
-    }
-
-    .active-link {
-        border-left: 3px solid #00f2ff;
-    }
-
-    /* Ajuste para móviles */
-    @media (max-width: 480px) {
-        .hub-card { padding: 10px; }
-    }
-</style>
-  
-</scrip>
-
-    <!-- MQ PRO - NO TOCA TU CHAT -->
-<style>.mq-pro-btn{position:fixed;right:90px;bottom:20px;z-index:999;width:56px;height:56px;border-radius:50%;border:2px solid #facc15;background:#000;cursor:pointer}.mq-pro-frame{position:fixed;right:20px;bottom:90px;z-index:999;width:380px;height:600px;border:1px solid #facc15;border-radius:16px;background:#000;display:none}.mq-pro-frame.open{display:block}</style>
-<button class="mq-pro-btn" onclick="document.getElementById('mqProFrame').classList.toggle('open')" title="MQ AI Pro con archivos">📎</button>
-<div id="mqProFrame" class="mq-pro-frame"><iframe src="https://maxiqueen-os-framework.vercel.app/" style="width:100%;height:100%;border:0" allow="microphone;clipboard-read;clipboard-write"></iframe></div>
 </body>
 </html>
